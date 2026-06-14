@@ -150,15 +150,95 @@
       background: #ef4444;
     }
 
-    #btn-my {
-      background: #1f2937;
-      color: #d1d5db;
+    /* ── AUTH / AVATAR ──────────────────────────────────────────── */
+    .avatar-circle {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: #fff;
+      flex-shrink: 0; overflow: hidden;
+      vertical-align: middle; user-select: none;
     }
 
-    #btn-my {
+    #profile-btn {
+      position: fixed;
+      bottom: calc(var(--safe-bottom) + 16px);
+      left: calc(var(--safe-left) + 16px);
+      z-index: 300;
+      width: 42px; height: 42px; border-radius: 50%;
       background: var(--surface2);
-      color: var(--text2);
+      border: none;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--text2); font-size: 20px;
+      transition: opacity 0.15s;
     }
+    #profile-btn:active { opacity: 0.75; }
+
+    #username-modal {
+      display: none; position: fixed; inset: 0; z-index: 900;
+      background: rgba(0,0,0,0.55);
+      align-items: center; justify-content: center; padding: 24px;
+    }
+    #username-modal.open { display: flex; }
+    #username-card {
+      background: var(--bg); border-radius: 20px;
+      padding: 28px 24px 24px;
+      width: 100%; max-width: 360px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.22);
+    }
+    #username-card h2 {
+      font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 16px;
+    }
+    #auth-tabs {
+      display: flex; gap: 0;
+      background: var(--surface); border-radius: 10px;
+      padding: 3px; margin-bottom: 18px;
+    }
+    .auth-tab {
+      flex: 1; padding: 8px; border: none; border-radius: 8px;
+      background: transparent; color: var(--text2);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      font-family: var(--font); transition: background 0.15s, color 0.15s;
+    }
+    .auth-tab.active {
+      background: var(--bg); color: var(--text);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    #username-input, #password-input {
+      width: 100%; padding: 12px 14px; font-size: 16px;
+      border: 1.5px solid var(--border); border-radius: 12px;
+      background: var(--surface); color: var(--text);
+      outline: none; margin-bottom: 10px;
+      font-family: var(--font); box-sizing: border-box;
+    }
+    #username-input:focus, #password-input:focus { border-color: var(--accent); }
+    #username-hint {
+      font-size: 12px; color: var(--text3);
+      margin-bottom: 14px; min-height: 16px;
+    }
+    #username-hint.error { color: #ef4444; }
+    #username-save {
+      width: 100%; padding: 13px;
+      background: var(--accent); color: #fff;
+      border: none; border-radius: 12px;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      font-family: var(--font);
+    }
+    #username-save:active { opacity: 0.85; }
+    #username-save:disabled { background: var(--border); color: var(--text3); cursor: default; }
+    #guest-btn {
+      width: 100%; padding: 11px; background: none; border: none;
+      font-family: var(--font); font-size: 14px;
+      color: var(--text3); cursor: pointer; margin-top: 4px;
+    }
+    #guest-btn:active { color: var(--text2); }
+
+    #signout-btn {
+      background: none; border: none; font-size: 13px;
+      color: var(--text3); cursor: pointer; padding: 4px 6px;
+      border-radius: 6px; font-family: var(--font);
+    }
+    #signout-btn:active { color: var(--accent); }
 
     /* ── ADD MODE HINT ───────────────────────────────────────────── */
     #add-hint {
@@ -624,7 +704,6 @@
     <span id="rule-count"></span>
     <div id="topbar-right">
       <button class="topbar-btn" id="btn-laws">🚗 LA Laws</button>
-      <button class="topbar-btn" id="btn-my">My Rules</button>
       <button class="topbar-btn" id="btn-add">+ Add Rule</button>
     </div>
   </div>
@@ -743,11 +822,6 @@
         <textarea class="form-textarea" id="f-notes" placeholder="e.g. Odd-numbered side only" maxlength="280"></textarea>
       </div>
 
-      <div class="form-group">
-        <label class="form-label">Your name <span style="font-weight:400;color:var(--text3)">(optional)</span></label>
-        <input class="form-input" id="f-name" type="text" placeholder="Leave blank to post anonymously" maxlength="40" autocomplete="off" />
-      </div>
-
       <button class="btn-primary" id="add-submit">Save Rule</button>
 
     </div>
@@ -757,12 +831,36 @@
   <div class="sheet" id="my-sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-header">
-      <div class="sheet-title">My Rules</div>
-      <div id="my-subtitle" class="sheet-subtitle"></div>
-      <button class="sheet-close" id="my-close">×</button>
+      <div>
+        <div class="sheet-title" id="my-title">My Rules</div>
+        <div id="my-subtitle" class="sheet-subtitle"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+        <button id="signout-btn" style="display:none">Sign out</button>
+        <button class="sheet-close" id="my-close">×</button>
+      </div>
     </div>
     <div class="sheet-body" id="my-list"></div>
   </div>
+
+  <!-- ── USERNAME MODAL ────────────────────────────────── -->
+  <div id="username-modal">
+    <div id="username-card">
+      <h2>👋 Join wipark</h2>
+      <div id="auth-tabs">
+        <button id="tab-create" class="auth-tab active">Create Account</button>
+        <button id="tab-login"  class="auth-tab">Log In</button>
+      </div>
+      <input id="username-input" type="text"     placeholder="Username"         autocomplete="username"         maxlength="20" />
+      <input id="password-input" type="password" placeholder="Password"         autocomplete="new-password"     maxlength="100" />
+      <div id="username-hint">3–20 characters, letters/numbers/underscores only</div>
+      <button id="username-save">Create Account</button>
+      <button id="guest-btn" type="button">Continue as guest</button>
+    </div>
+  </div>
+
+  <!-- ── PROFILE BUTTON ────────────────────────────────── -->
+  <button id="profile-btn" aria-label="My profile">👤</button>
 
 
   <!-- ── LEGEND ──────────────────────────────────────── -->
@@ -945,15 +1043,16 @@
 
     // ── STATE ───────────────────────────────────────────────────────
     let map, db, auth;
-    let currentUser    = null;
-    let restrictions   = [];      // array of {id, ...data}
-    let addMode        = false;
-    let pendingMarker  = null;    // maplibregl.Marker
-    let pendingLatLng  = null;    // {lat, lng}
-    let viewingId      = null;    // currently viewed restriction id
-    let sheetOpen      = null;    // 'view' | 'add' | 'my' | null
+    let currentUser     = null;
+    let currentUsername = null;   // null = guest
+    let restrictions    = [];
+    let addMode         = false;
+    let pendingMarker   = null;
+    let pendingLatLng   = null;
+    let viewingId       = null;
+    let sheetOpen       = null;
 
-    // Per-device anonymous tracking (localStorage)
+    // Per-device tracking (for guests + upvotes)
     function getMyRuleIds() {
       try { return JSON.parse(localStorage.getItem('wipark_mine') || '[]'); } catch(e) { return []; }
     }
@@ -973,14 +1072,144 @@
       try { localStorage.setItem('wipark_voted', JSON.stringify(ids)); } catch(e) {}
     }
 
+    // ── AVATAR ──────────────────────────────────────────────────────
+    function avatarColor(username) {
+      var palette = ['#e53935','#8e24aa','#1e88e5','#00897b','#f4511e','#43a047','#6d4c41','#1565c0','#d81b60','#f57f17'];
+      var hash = 0;
+      for (var i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash);
+      return palette[Math.abs(hash) % palette.length];
+    }
+    function updateProfileBtn() {
+      const btn = document.getElementById('profile-btn');
+      if (!btn) return;
+      if (currentUsername) {
+        const color = avatarColor(currentUsername);
+        const letter = currentUsername[0].toUpperCase();
+        btn.innerHTML = '<div class="avatar-circle" style="background:' + color + ';width:32px;height:32px;font-size:14px">' + letter + '</div>';
+      } else {
+        btn.innerHTML = '👤';
+      }
+    }
+
     // ── FIREBASE ────────────────────────────────────────────────────
     firebase.initializeApp(FIREBASE_CONFIG);
     db   = firebase.firestore();
     auth = firebase.auth();
 
-    // Sign in anonymously so Firestore rules stay consistent
-    auth.signInAnonymously().catch(function(e) { console.warn('Anon auth failed', e); });
-    auth.onAuthStateChanged(function(user) { currentUser = user; });
+    // ── AUTH MODAL ──────────────────────────────────────────────────
+    function validateUsername(name) {
+      if (name.length < 3) return 'Too short — at least 3 characters';
+      if (name.length > 20) return 'Too long — max 20 characters';
+      if (!/^[a-zA-Z0-9_]+$/.test(name)) return 'Letters, numbers, and underscores only';
+      return null;
+    }
+
+    function setupAuthModal() {
+      const modal      = document.getElementById('username-modal');
+      const usernameIn = document.getElementById('username-input');
+      const passwordIn = document.getElementById('password-input');
+      const hint       = document.getElementById('username-hint');
+      const btn        = document.getElementById('username-save');
+      const tabCreate  = document.getElementById('tab-create');
+      const tabLogin   = document.getElementById('tab-login');
+      const guestBtn   = document.getElementById('guest-btn');
+      let mode = 'create';
+
+      function setMode(m) {
+        mode = m;
+        tabCreate.classList.toggle('active', m === 'create');
+        tabLogin.classList.toggle('active', m === 'login');
+        btn.textContent = m === 'create' ? 'Create Account' : 'Log In';
+        hint.className = 'username-hint';
+        hint.textContent = m === 'create' ? '3–20 characters, letters/numbers/underscores only' : '';
+        passwordIn.autocomplete = m === 'create' ? 'new-password' : 'current-password';
+      }
+      tabCreate.addEventListener('click', function() { setMode('create'); });
+      tabLogin.addEventListener('click',  function() { setMode('login'); });
+
+      guestBtn.addEventListener('click', async function() {
+        guestBtn.textContent = 'Entering…';
+        guestBtn.disabled = true;
+        try {
+          await auth.signInAnonymously();
+        } catch(e) {
+          modal.classList.remove('open');
+          guestBtn.textContent = 'Continue as guest';
+          guestBtn.disabled = false;
+        }
+      });
+
+      auth.onAuthStateChanged(async function(user) {
+        currentUser = user;
+        if (user) {
+          if (!user.isAnonymous) {
+            try {
+              const snap = await db.collection('usernames').where('uid','==',user.uid).limit(1).get();
+              if (!snap.empty) currentUsername = snap.docs[0].id;
+            } catch(e) {}
+          }
+          modal.classList.remove('open');
+          updateProfileBtn();
+          document.getElementById('signout-btn').style.display = currentUsername ? '' : 'none';
+        } else {
+          currentUsername = null;
+          modal.classList.add('open');
+          setTimeout(function() { usernameIn.focus(); }, 300);
+        }
+      });
+
+      async function attemptCreate() {
+        const val  = usernameIn.value.trim();
+        const pass = passwordIn.value;
+        const err  = validateUsername(val);
+        if (err) { hint.textContent = err; hint.className = 'username-hint error'; return; }
+        if (pass.length < 6) { hint.textContent = 'Password must be at least 6 characters'; hint.className = 'username-hint error'; return; }
+        btn.disabled = true; btn.textContent = 'Creating…';
+        hint.textContent = ''; hint.className = 'username-hint';
+        try {
+          const key = val.toLowerCase();
+          const ref = db.collection('usernames').doc(key);
+          if ((await ref.get()).exists) {
+            hint.textContent = 'Username taken — try another'; hint.className = 'username-hint error'; return;
+          }
+          const cred = await auth.createUserWithEmailAndPassword(key + '@wipark.local', pass);
+          await ref.set({ uid: cred.user.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+          currentUsername = key;
+          showToast('Welcome, ' + val + '!');
+        } catch(e) {
+          if (e.code === 'auth/email-already-in-use') hint.textContent = 'Username taken — try another';
+          else hint.textContent = e.message || 'Something went wrong';
+          hint.className = 'username-hint error';
+        } finally {
+          btn.disabled = false; btn.textContent = 'Create Account';
+        }
+      }
+
+      async function attemptLogin() {
+        const val  = usernameIn.value.trim();
+        const pass = passwordIn.value;
+        if (!val) { hint.textContent = 'Enter your username'; hint.className = 'username-hint error'; return; }
+        if (!pass) { hint.textContent = 'Enter your password'; hint.className = 'username-hint error'; return; }
+        btn.disabled = true; btn.textContent = 'Logging in…';
+        hint.textContent = ''; hint.className = 'username-hint';
+        try {
+          await auth.signInWithEmailAndPassword(val.toLowerCase() + '@wipark.local', pass);
+          currentUsername = val.toLowerCase();
+        } catch(e) {
+          hint.textContent = (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential')
+            ? 'Username or password is incorrect' : (e.message || 'Login failed');
+          hint.className = 'username-hint error';
+        } finally {
+          btn.disabled = false; btn.textContent = 'Log In';
+        }
+      }
+
+      btn.addEventListener('click', function() { mode === 'create' ? attemptCreate() : attemptLogin(); });
+      usernameIn.addEventListener('keydown', function(e) { if (e.key === 'Enter') passwordIn.focus(); });
+      passwordIn.addEventListener('keydown', function(e) { if (e.key === 'Enter') { mode === 'create' ? attemptCreate() : attemptLogin(); } });
+    }
+
+    setupAuthModal();
 
     // ── MAP ─────────────────────────────────────────────────────────
     map = new maplibregl.Map({
@@ -1217,12 +1446,25 @@
       upvoteBtn.disabled  = false;
       document.getElementById('view-upvote-count').textContent = r.upvotes || 0;
 
-      // Delete — show only for rules added from this device
+      // Delete — show for username match OR device-local guest submissions
       const deleteBtn = document.getElementById('view-delete');
-      deleteBtn.style.display = getMyRuleIds().includes(r.id) ? '' : 'none';
+      const canDelete = currentUsername
+        ? r.submittedBy === currentUsername
+        : getMyRuleIds().includes(r.id);
+      deleteBtn.style.display = canDelete ? '' : 'none';
 
-      document.getElementById('view-author').textContent =
-        r.submittedBy || 'Anonymous';
+      // Author with avatar
+      const author = r.submittedBy || 'Anonymous';
+      const authorEl = document.getElementById('view-author');
+      if (r.submittedBy) {
+        const color  = avatarColor(r.submittedBy);
+        const letter = r.submittedBy[0].toUpperCase();
+        authorEl.innerHTML =
+          '<span class="avatar-circle" style="background:' + color + ';width:20px;height:20px;font-size:10px;display:inline-flex;margin-right:5px;vertical-align:middle">' + letter + '</span>' +
+          esc(r.submittedBy);
+      } else {
+        authorEl.textContent = 'Anonymous';
+      }
 
       openSheet('view');
     }
@@ -1275,7 +1517,6 @@
       document.getElementById('f-start').value  = '08:00';
       document.getElementById('f-end').value    = '10:00';
       document.getElementById('f-notes').value  = '';
-      document.getElementById('f-name').value   = '';
       document.querySelectorAll('.day-pill').forEach(function (p) {
         p.classList.remove('selected');
       });
@@ -1308,7 +1549,6 @@
       const start  = document.getElementById('f-start').value;
       const end    = document.getElementById('f-end').value;
       const notes  = document.getElementById('f-notes').value.trim();
-      const name   = document.getElementById('f-name').value.trim();
       const days   = Array.from(document.querySelectorAll('.day-pill.selected'))
                          .map(function (p) { return p.dataset.day; });
 
@@ -1332,7 +1572,7 @@
           startTime:    start,
           endTime:      end,
           notes:        notes || null,
-          submittedBy:  name || null,
+          submittedBy:  currentUsername || null,
           createdAt:    firebase.firestore.FieldValue.serverTimestamp(),
           upvotes:      0
         });
@@ -1341,7 +1581,6 @@
         closeAllSheets();
         if (pendingMarker) { pendingMarker.remove(); pendingMarker = null; }
         pendingLatLng = null;
-        document.getElementById('f-name').value = '';
         showToast('Parking rule saved!');
       } catch (e) {
         console.error(e);
@@ -1352,18 +1591,35 @@
     });
 
     // ── MY SUBMISSIONS SHEET ─────────────────────────────────────────
-    document.getElementById('btn-my').addEventListener('click', openMySheet);
+    document.getElementById('profile-btn').addEventListener('click', openMySheet);
     document.getElementById('my-close').addEventListener('click', closeAllSheets);
+    document.getElementById('signout-btn').addEventListener('click', function () {
+      if (!confirm('Sign out?')) return;
+      auth.signOut().then(function () {
+        currentUsername = null;
+        updateProfileBtn();
+        closeAllSheets();
+        showToast('Signed out');
+      });
+    });
 
     async function openMySheet() {
       const list = document.getElementById('my-list');
       list.innerHTML = '<p class="empty-msg">Loading…</p>';
       openSheet('my');
 
-      const myIds = getMyRuleIds();
-      const mine = restrictions.filter(function (r) {
-        return myIds.includes(r.id);
-      });
+      // Update header
+      document.getElementById('my-title').textContent = currentUsername ? currentUsername + "'s Rules" : 'My Rules';
+      document.getElementById('signout-btn').style.display = currentUsername ? '' : 'none';
+
+      // Filter: by username if logged in, by localStorage if guest
+      let mine;
+      if (currentUsername) {
+        mine = restrictions.filter(function (r) { return r.submittedBy === currentUsername; });
+      } else {
+        const myIds = getMyRuleIds();
+        mine = restrictions.filter(function (r) { return myIds.includes(r.id); });
+      }
 
       document.getElementById('my-subtitle').textContent =
         mine.length + ' rule' + (mine.length !== 1 ? 's' : '');
@@ -1395,7 +1651,7 @@
           if (!confirm('Delete this rule?')) return;
           try {
             await db.collection('restrictions').doc(r.id).delete();
-            openMySheet(); // refresh
+            openMySheet();
             showToast('Deleted');
           } catch (e) {
             showToast('Could not delete');
