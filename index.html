@@ -81,6 +81,10 @@
       bottom: calc(var(--safe-bottom) + 12px) !important;
       left:   calc(var(--safe-left)   + 10px) !important;
     }
+    .maplibregl-ctrl-bottom-right {
+      bottom: calc(var(--safe-bottom) + 4px) !important;
+      right:  calc(var(--safe-right)  + 10px) !important;
+    }
     .maplibregl-ctrl-group {
       border-radius: 12px !important;
       box-shadow: 0 2px 10px rgba(0,0,0,.18) !important;
@@ -602,7 +606,7 @@
     /* ── LEGEND ──────────────────────────────────────────────────── */
     #legend-btn {
       position: fixed;
-      bottom: calc(var(--safe-bottom) + 16px);
+      bottom: calc(var(--safe-bottom) + 38px);
       right: calc(var(--safe-right) + 10px);
       z-index: 300;
       background: var(--bg);
@@ -617,7 +621,7 @@
 
     #legend-panel {
       position: fixed;
-      bottom: calc(var(--safe-bottom) + 54px);
+      bottom: calc(var(--safe-bottom) + 76px);
       right: calc(var(--safe-right) + 10px);
       z-index: 300;
       background: var(--bg);
@@ -1409,7 +1413,7 @@
       maxPitch: 0
     });
 
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 
     const geolocate = new maplibregl.GeolocateControl({
