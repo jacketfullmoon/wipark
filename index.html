@@ -1142,8 +1142,11 @@
     let avatarCache     = {};     // { username: { emoji, color } }
     let restrictions    = [];
     let addMode         = false;
-    let pendingMarker   = null;
-    let pendingLatLng   = null;
+    let pendingMarkerA  = null;
+    let pendingMarkerB  = null;
+    let pendingPinA     = null;   // { lat, lng } start of restriction
+    let pendingPinB     = null;   // { lat, lng } end of restriction
+    let pendingPinStep  = 0;      // 0=none, 1=A placed, 2=both placed
     let viewingId       = null;
     let sheetOpen       = null;
 
@@ -1436,6 +1439,50 @@
         data: buildGeoJSON()
       });
 
+      // Dashed preview line shown while the user is dropping pins in add mode
+      map.addSource('preview-line', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+      map.addLayer({
+        id: 'preview-line-layer',
+        type: 'line',
+        source: 'preview-line',
+        paint: {
+          'line-color': '#6366f1',
+          'line-width': 3,
+          'line-dasharray': [5, 3],
+          'line-opacity': 0.75
+        }
+      });
+
+      // Coloured lines for saved line-segment restrictions
+      map.addLayer({
+        id: 'r-line',
+        type: 'line',
+        source: 'restrictions',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': [
+            'match', ['get', 'type'],
+            'no_parking',      '#ef4444',
+            '2hr_limit',       '#f97316',
+            '4hr_limit',       '#eab308',
+            'permit_only',     '#8b5cf6',
+            'street_cleaning', '#3b82f6',
+            'free_parking',    '#22c55e',
+            'curb_red',        '#b91c1c',
+            'curb_yellow',     '#b45309',
+            'curb_white',      '#9ca3af',
+            'curb_green',      '#166534',
+            'curb_blue',       '#1e40af',
+            '#999999'
+          ],
+          'line-width': 6,
+          'line-opacity': 0.85
+        }
+      });
+
       // Outer white ring
       map.addLayer({
         id: 'r-border',
@@ -1476,13 +1523,20 @@
       });
 
       map.on('click', 'r-fill', function (e) {
-        if (addMode) return; // ignore marker clicks in add mode
+        if (addMode) return;
         const props = e.features[0].properties;
         openViewSheet(props.id);
         e.originalEvent.stopPropagation();
       });
 
-      // Map click → add mode
+      map.on('click', 'r-line', function (e) {
+        if (addMode) return;
+        const props = e.features[0].properties;
+        openViewSheet(props.id);
+        e.originalEvent.stopPropagation();
+      });
+
+      // Map click → add mode (drop pins)
       map.on('click', function (e) {
         if (!addMode) return;
         placePin(e.lngLat.lat, e.lngLat.lng);
@@ -1491,30 +1545,35 @@
       // Cursor
       map.on('mouseenter', 'r-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
       map.on('mouseleave', 'r-fill', () => { map.getCanvas().style.cursor = addMode ? 'crosshair' : ''; });
+      map.on('mouseenter', 'r-line', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'r-line', () => { map.getCanvas().style.cursor = addMode ? 'crosshair' : ''; });
     }
 
     function buildGeoJSON() {
-      return {
-        type: 'FeatureCollection',
-        features: restrictions.map(function (r) {
-          return {
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [r.lng, r.lat] },
-            properties: {
-              id:           r.id,
-              type:         r.type,
-              streetName:   r.streetName,
-              neighborhood: r.neighborhood,
-              days:         r.days.join(','),
-              startTime:    r.startTime,
-              endTime:      r.endTime,
-              notes:        r.notes || '',
-              submittedBy:  r.submittedBy || '',
-              upvotes:      r.upvotes || 0
-            }
-          };
-        })
-      };
+      const features = [];
+      restrictions.forEach(function (r) {
+        const hasLine = r.lat2 != null && r.lng2 != null;
+        const props = {
+          id:           r.id,
+          type:         r.type,
+          streetName:   r.streetName,
+          neighborhood: r.neighborhood,
+          days:         (r.days || []).join(','),
+          startTime:    r.startTime,
+          endTime:      r.endTime,
+          notes:        r.notes || '',
+          submittedBy:  r.submittedBy || '',
+          upvotes:      r.upvotes || 0
+        };
+        features.push({
+          type: 'Feature',
+          geometry: hasLine
+            ? { type: 'LineString', coordinates: [[r.lng, r.lat], [r.lng2, r.lat2]] }
+            : { type: 'Point',      coordinates: [r.lng, r.lat] },
+          properties: props
+        });
+      });
+      return { type: 'FeatureCollection', features: features };
     }
 
     function refreshMapSource() {
@@ -1546,59 +1605,102 @@
     });
 
     function toggleAddMode() {
-      addMode = !addMode;
-      const btn  = document.getElementById('btn-add');
-      const hint = document.getElementById('add-hint');
       if (addMode) {
+        exitAddMode();
+      } else {
+        addMode = true;
+        pendingPinStep = 0;
+        const btn  = document.getElementById('btn-add');
+        const hint = document.getElementById('add-hint');
         btn.textContent = '✕ Cancel';
         btn.classList.add('active');
+        hint.textContent = '📍 Tap where the restriction STARTS';
         hint.classList.add('show');
         map.getCanvas().style.cursor = 'crosshair';
         closeAllSheets();
-      } else {
-        exitAddMode();
       }
     }
 
-    function exitAddMode() {
+    // Only resets the add-mode UI — does NOT clear the dropped pins
+    function exitAddModeUI() {
       addMode = false;
       document.getElementById('btn-add').textContent = '+ Add Rule';
       document.getElementById('btn-add').classList.remove('active');
       document.getElementById('add-hint').classList.remove('show');
       map.getCanvas().style.cursor = '';
-      if (pendingMarker) { pendingMarker.remove(); pendingMarker = null; }
-      pendingLatLng = null;
+    }
+
+    // Full cancel: reset UI + remove any dropped pins
+    function exitAddMode() {
+      exitAddModeUI();
+      clearPendingPins();
+    }
+
+    function clearPendingPins() {
+      if (pendingMarkerA) { pendingMarkerA.remove(); pendingMarkerA = null; }
+      if (pendingMarkerB) { pendingMarkerB.remove(); pendingMarkerB = null; }
+      pendingPinA = null;
+      pendingPinB = null;
+      pendingPinStep = 0;
+      try {
+        if (map.getSource('preview-line')) {
+          map.getSource('preview-line').setData({ type: 'FeatureCollection', features: [] });
+        }
+      } catch(e) {}
+    }
+
+    function createPinMarker(lat, lng, color) {
+      const el = document.createElement('div');
+      el.style.cssText =
+        'width:18px;height:18px;border-radius:50%;' +
+        'background:' + color + ';' +
+        'border:3px solid #fff;' +
+        'box-shadow:0 2px 10px rgba(0,0,0,.35);' +
+        'animation:pin-pulse 1.1s ease-in-out infinite';
+      if (!document.getElementById('pin-pulse-style')) {
+        const s = document.createElement('style');
+        s.id = 'pin-pulse-style';
+        s.textContent = '@keyframes pin-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}';
+        document.head.appendChild(s);
+      }
+      return new maplibregl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([lng, lat])
+        .addTo(map);
     }
 
     function placePin(lat, lng) {
-      if (pendingMarker) pendingMarker.remove();
-      pendingLatLng = { lat, lng };
-
-      // Create a pulsing pin
-      const el = document.createElement('div');
-      el.style.cssText = [
-        'width:16px', 'height:16px',
-        'border-radius:50%',
-        'background:#ef4444',
-        'border:3px solid #fff',
-        'box-shadow:0 0 0 4px rgba(239,68,68,.35)',
-        'animation:pulse 1.2s infinite'
-      ].join(';');
-
-      // inject pulse keyframes once
-      if (!document.getElementById('pulse-style')) {
-        const s = document.createElement('style');
-        s.id = 'pulse-style';
-        s.textContent = '@keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(239,68,68,.35)}50%{box-shadow:0 0 0 10px rgba(239,68,68,0)}}';
-        document.head.appendChild(s);
+      if (pendingPinStep === 0) {
+        // First pin — start of restriction (blue)
+        pendingPinA   = { lat, lng };
+        pendingMarkerA = createPinMarker(lat, lng, '#2563eb');
+        pendingPinStep = 1;
+        const hint = document.getElementById('add-hint');
+        hint.textContent = '📍 Now tap where the restriction ENDS';
+      } else {
+        // Second pin — end of restriction (red)
+        pendingPinB   = { lat, lng };
+        pendingMarkerB = createPinMarker(lat, lng, '#ef4444');
+        pendingPinStep = 2;
+        // Draw dashed preview line between the two pins
+        try {
+          map.getSource('preview-line').setData({
+            type: 'FeatureCollection',
+            features: [{
+              type: 'Feature',
+              geometry: {
+                type: 'LineString',
+                coordinates: [
+                  [pendingPinA.lng, pendingPinA.lat],
+                  [pendingPinB.lng, pendingPinB.lat]
+                ]
+              },
+              properties: {}
+            }]
+          });
+        } catch(e) {}
+        exitAddModeUI();
+        openAddSheet();
       }
-
-      pendingMarker = new maplibregl.Marker({ element: el, anchor: 'center' })
-        .setLngLat([lng, lat])
-        .addTo(map);
-
-      exitAddMode();
-      openAddSheet(lat, lng);
     }
 
     // ── VIEW SHEET ──────────────────────────────────────────────────
@@ -1694,9 +1796,11 @@
     });
 
     // ── ADD SHEET ───────────────────────────────────────────────────
-    function openAddSheet(lat, lng) {
-      document.getElementById('add-coords').textContent =
-        lat.toFixed(5) + ', ' + lng.toFixed(5);
+    function openAddSheet() {
+      const a = pendingPinA, b = pendingPinB;
+      document.getElementById('add-coords').textContent = b
+        ? 'Start pin → End pin (line added to map)'
+        : (a ? a.lat.toFixed(5) + ', ' + a.lng.toFixed(5) : '');
 
       // Reset form
       document.getElementById('f-street').value = '';
@@ -1716,9 +1820,8 @@
     }
 
     document.getElementById('add-close').addEventListener('click', function () {
+      clearPendingPins();
       closeAllSheets();
-      if (pendingMarker) { pendingMarker.remove(); pendingMarker = null; }
-      pendingLatLng = null;
     });
 
     // Day pill toggles
@@ -1729,7 +1832,7 @@
     });
 
     document.getElementById('add-submit').addEventListener('click', async function () {
-      if (!pendingLatLng) return;
+      if (!pendingPinA) { showToast('Drop pins on the map first'); return; }
 
       const street = document.getElementById('f-street').value.trim();
       const hood   = document.getElementById('f-hood').value.trim();
@@ -1751,8 +1854,10 @@
 
       try {
         const docRef = await db.collection('restrictions').add({
-          lat:          pendingLatLng.lat,
-          lng:          pendingLatLng.lng,
+          lat:          pendingPinA.lat,
+          lng:          pendingPinA.lng,
+          lat2:         pendingPinB ? pendingPinB.lat : null,
+          lng2:         pendingPinB ? pendingPinB.lng : null,
           streetName:   street,
           neighborhood: hood,
           type:         type,
@@ -1767,8 +1872,7 @@
 
         addMyRuleId(docRef.id);
         closeAllSheets();
-        if (pendingMarker) { pendingMarker.remove(); pendingMarker = null; }
-        pendingLatLng = null;
+        clearPendingPins();
         showToast('Parking rule saved!');
       } catch (e) {
         console.error(e);
@@ -1910,12 +2014,8 @@
     }
 
     document.getElementById('sheet-backdrop').addEventListener('click', function () {
+      if (sheetOpen === 'add') clearPendingPins();
       closeAllSheets();
-      if (sheetOpen === 'add' && pendingMarker) {
-        pendingMarker.remove();
-        pendingMarker = null;
-        pendingLatLng = null;
-      }
     });
 
     // Drag to dismiss on all sheets
