@@ -240,6 +240,79 @@
     }
     #signout-btn:active { color: var(--accent); }
 
+    /* ── AVATAR PICKER ───────────────────────────────────────────── */
+    .avatar-circle-large {
+      width: 54px; height: 54px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; font-weight: 700; color: #fff;
+      flex-shrink: 0; user-select: none; cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      transition: opacity 0.15s;
+    }
+    .avatar-circle-large:active { opacity: 0.75; }
+
+    #my-header { display: flex; align-items: center; gap: 12px; }
+    #my-header .sheet-title { padding-right: 0; }
+    #my-header .sheet-close { position: static; }
+
+    #emoji-picker-modal {
+      display: none; position: fixed; inset: 0; z-index: 950;
+      background: rgba(0,0,0,0.55);
+      align-items: flex-end; justify-content: center;
+    }
+    #emoji-picker-modal.open { display: flex; }
+    #emoji-picker-card {
+      background: var(--bg); border-radius: 22px 22px 0 0;
+      padding: 22px 20px calc(24px + var(--safe-bottom));
+      width: 100%; max-width: 480px;
+      box-shadow: 0 -4px 30px rgba(0,0,0,0.2);
+      max-height: 75vh; overflow-y: auto;
+    }
+    .emoji-picker-title {
+      font-size: 16px; font-weight: 700; color: var(--text);
+      text-align: center; margin-bottom: 16px;
+    }
+    .emoji-grid {
+      display: grid; grid-template-columns: repeat(8, 1fr);
+      gap: 5px; margin-bottom: 16px;
+    }
+    .emoji-opt {
+      aspect-ratio: 1; border-radius: 10px; border: none;
+      background: var(--surface); cursor: pointer;
+      font-size: 22px; display: flex; align-items: center; justify-content: center;
+      transition: background 0.1s; -webkit-tap-highlight-color: transparent;
+    }
+    .emoji-opt.selected {
+      background: var(--accent-light);
+      outline: 2px solid var(--accent);
+    }
+    .emoji-colors-title {
+      font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 10px;
+    }
+    .color-swatches-row {
+      display: grid; grid-template-columns: repeat(8, 1fr);
+      gap: 6px; margin-bottom: 4px;
+    }
+    .color-swatch {
+      aspect-ratio: 1; border-radius: 50%; border: 2.5px solid transparent;
+      cursor: pointer; transition: transform 0.1s;
+    }
+    .color-swatch:active { transform: scale(0.88); }
+    .color-swatch.selected { border-color: var(--text); box-shadow: 0 0 0 2px var(--bg); }
+    .emoji-picker-actions { display: flex; gap: 8px; margin-top: 18px; }
+    .emoji-picker-reset {
+      flex: 1; padding: 12px;
+      background: var(--surface); color: var(--text2);
+      border: none; border-radius: 12px;
+      font-size: 14px; font-weight: 600; cursor: pointer; font-family: var(--font);
+    }
+    .emoji-picker-done {
+      flex: 1; padding: 12px;
+      background: var(--accent); color: #fff;
+      border: none; border-radius: 12px;
+      font-size: 14px; font-weight: 600; cursor: pointer; font-family: var(--font);
+    }
+
     /* ── ADD MODE HINT ───────────────────────────────────────────── */
     #add-hint {
       position: fixed;
@@ -830,12 +903,15 @@
   <!-- ── MY SUBMISSIONS SHEET ────────────────────────── -->
   <div class="sheet" id="my-sheet">
     <div class="sheet-handle"></div>
-    <div class="sheet-header">
-      <div>
+    <div class="sheet-header" id="my-header">
+      <div id="my-avatar-wrap" style="display:none">
+        <div id="my-avatar-large" class="avatar-circle-large" aria-label="Edit avatar">?</div>
+      </div>
+      <div style="flex:1;min-width:0">
         <div class="sheet-title" id="my-title">My Rules</div>
         <div id="my-subtitle" class="sheet-subtitle"></div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+      <div style="display:flex;align-items:center;gap:6px">
         <button id="signout-btn" style="display:none">Sign out</button>
         <button class="sheet-close" id="my-close">×</button>
       </div>
@@ -856,6 +932,20 @@
       <div id="username-hint">3–20 characters, letters/numbers/underscores only</div>
       <button id="username-save">Create Account</button>
       <button id="guest-btn" type="button">Continue as guest</button>
+    </div>
+  </div>
+
+  <!-- ── EMOJI PICKER MODAL ───────────────────────────── -->
+  <div id="emoji-picker-modal">
+    <div id="emoji-picker-card">
+      <div class="emoji-picker-title">Edit Avatar</div>
+      <div id="emoji-grid" class="emoji-grid"></div>
+      <div class="emoji-colors-title">Color</div>
+      <div id="color-swatches-row" class="color-swatches-row"></div>
+      <div class="emoji-picker-actions">
+        <button id="avatar-reset-btn" class="emoji-picker-reset">Reset to default</button>
+        <button id="emoji-picker-close" class="emoji-picker-done">Done</button>
+      </div>
     </div>
   </div>
 
@@ -1045,6 +1135,7 @@
     let map, db, auth;
     let currentUser     = null;
     let currentUsername = null;   // null = guest
+    let avatarCache     = {};     // { username: { emoji, color } }
     let restrictions    = [];
     let addMode         = false;
     let pendingMarker   = null;
@@ -1073,22 +1164,108 @@
     }
 
     // ── AVATAR ──────────────────────────────────────────────────────
+    var AVATAR_COLORS = [
+      '#e53935','#d81b60','#8e24aa','#5e35b1',
+      '#1e88e5','#039be5','#00897b','#43a047',
+      '#e65100','#f4511e','#f57f17','#6d4c41',
+      '#1565c0','#0288d1','#00796b','#388e3c',
+      '#c62828','#ad1457','#6a1b9a','#4527a0',
+      '#1976d2','#0277bd','#00695c','#2e7d32',
+      '#bf360c','#e64a19','#f9a825','#558b2f',
+      '#37474f','#455a64','#546e7a','#607d8b'
+    ];
+    var AVATAR_EMOJIS = [
+      '😊','😎','🤩','😄','😁','🥳','🤠','😇',
+      '🐶','🐱','🦊','🐻','🐼','🐨','🦁','🐯',
+      '🌺','🌸','🌻','🌵','🌴','🍀','🎃','⭐',
+      '🚗','🚕','🏎️','🚙','🛻','🚐','🚌','✈️',
+      '🌊','🔥','⚡','🎸','🎯','🎲','🏀','⚽'
+    ];
+
     function avatarColor(username) {
-      var palette = ['#e53935','#8e24aa','#1e88e5','#00897b','#f4511e','#43a047','#6d4c41','#1565c0','#d81b60','#f57f17'];
       var hash = 0;
       for (var i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash);
-      return palette[Math.abs(hash) % palette.length];
+      return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+    }
+    function renderAvatarEl(el, username, emoji, color) {
+      if (!el) return;
+      el.style.background = color || (username ? avatarColor(username) : '#555');
+      el.textContent      = emoji  || (username ? username[0].toUpperCase() : '?');
     }
     function updateProfileBtn() {
       const btn = document.getElementById('profile-btn');
       if (!btn) return;
       if (currentUsername) {
-        const color = avatarColor(currentUsername);
-        const letter = currentUsername[0].toUpperCase();
-        btn.innerHTML = '<div class="avatar-circle" style="background:' + color + ';width:32px;height:32px;font-size:14px">' + letter + '</div>';
+        const cache   = avatarCache[currentUsername] || {};
+        const color   = cache.color || avatarColor(currentUsername);
+        const display = cache.emoji || currentUsername[0].toUpperCase();
+        const sz      = cache.emoji ? '20px' : '14px';
+        btn.innerHTML = '<div class="avatar-circle" style="background:' + color + ';width:32px;height:32px;font-size:' + sz + '">' + display + '</div>';
       } else {
         btn.innerHTML = '👤';
       }
+    }
+    function openEmojiPicker() {
+      if (!currentUsername) return;
+      const modal = document.getElementById('emoji-picker-modal');
+      const cache = avatarCache[currentUsername] || {};
+      document.querySelectorAll('.emoji-opt').forEach(function(b) {
+        b.classList.toggle('selected', b.dataset.emoji === (cache.emoji || ''));
+      });
+      buildColorSwatches(cache.color || null);
+      modal.classList.add('open');
+    }
+    function buildColorSwatches(selectedColor) {
+      const row = document.getElementById('color-swatches-row');
+      if (!row) return;
+      row.innerHTML = '';
+      AVATAR_COLORS.forEach(function(c) {
+        const sw = document.createElement('button');
+        sw.className = 'color-swatch' + (c === selectedColor ? ' selected' : '');
+        sw.style.background = c;
+        sw.dataset.color = c;
+        sw.setAttribute('aria-label', 'Set color ' + c);
+        sw.addEventListener('click', function() { saveAvatarColor(c); });
+        row.appendChild(sw);
+      });
+    }
+    async function saveAvatarColor(color) {
+      if (!currentUsername) return;
+      const cache = avatarCache[currentUsername] || {};
+      cache.color = color;
+      avatarCache[currentUsername] = cache;
+      updateProfileBtn();
+      buildColorSwatches(color);
+      renderAvatarEl(document.getElementById('my-avatar-large'), currentUsername, cache.emoji, color);
+      try { await db.collection('usernames').doc(currentUsername).update({ avatar_color: color }); } catch(e) {}
+    }
+    async function saveAvatarEmoji(emoji) {
+      if (!currentUsername) return;
+      const cache = avatarCache[currentUsername] || {};
+      cache.emoji = emoji;
+      avatarCache[currentUsername] = cache;
+      updateProfileBtn();
+      document.querySelectorAll('.emoji-opt').forEach(function(b) {
+        b.classList.toggle('selected', b.dataset.emoji === emoji);
+      });
+      renderAvatarEl(document.getElementById('my-avatar-large'), currentUsername, emoji, cache.color);
+      try { await db.collection('usernames').doc(currentUsername).update({ avatar_emoji: emoji }); } catch(e) {}
+    }
+    async function resetAvatar() {
+      if (!currentUsername) return;
+      const cache = avatarCache[currentUsername] || {};
+      cache.emoji = null; cache.color = null;
+      avatarCache[currentUsername] = cache;
+      updateProfileBtn();
+      renderAvatarEl(document.getElementById('my-avatar-large'), currentUsername, null, null);
+      document.querySelectorAll('.emoji-opt').forEach(function(b) { b.classList.remove('selected'); });
+      buildColorSwatches(null);
+      try {
+        await db.collection('usernames').doc(currentUsername).update({
+          avatar_emoji: firebase.firestore.FieldValue.delete(),
+          avatar_color: firebase.firestore.FieldValue.delete()
+        });
+      } catch(e) {}
     }
 
     // ── FIREBASE ────────────────────────────────────────────────────
@@ -1145,7 +1322,14 @@
           if (!user.isAnonymous) {
             try {
               const snap = await db.collection('usernames').where('uid','==',user.uid).limit(1).get();
-              if (!snap.empty) currentUsername = snap.docs[0].id;
+              if (!snap.empty) {
+                currentUsername = snap.docs[0].id;
+                const data = snap.docs[0].data();
+                avatarCache[currentUsername] = {
+                  emoji: data.avatar_emoji || null,
+                  color: data.avatar_color || null
+                };
+              }
             } catch(e) {}
           }
           modal.classList.remove('open');
@@ -1593,6 +1777,31 @@
     // ── MY SUBMISSIONS SHEET ─────────────────────────────────────────
     document.getElementById('profile-btn').addEventListener('click', openMySheet);
     document.getElementById('my-close').addEventListener('click', closeAllSheets);
+
+    // ── AVATAR / EMOJI PICKER ───────────────────────────────────────
+    // Build emoji grid once on init
+    (function buildEmojiGrid() {
+      const grid = document.getElementById('emoji-grid');
+      if (!grid) return;
+      AVATAR_EMOJIS.forEach(function(e) {
+        const btn = document.createElement('button');
+        btn.className    = 'emoji-opt';
+        btn.dataset.emoji = e;
+        btn.textContent  = e;
+        btn.addEventListener('click', function() { saveAvatarEmoji(e); });
+        grid.appendChild(btn);
+      });
+    })();
+
+    document.getElementById('my-avatar-large').addEventListener('click', openEmojiPicker);
+    document.getElementById('emoji-picker-close').addEventListener('click', function() {
+      document.getElementById('emoji-picker-modal').classList.remove('open');
+    });
+    document.getElementById('avatar-reset-btn').addEventListener('click', resetAvatar);
+    document.getElementById('emoji-picker-modal').addEventListener('click', function(e) {
+      if (e.target === this) this.classList.remove('open');
+    });
+
     document.getElementById('signout-btn').addEventListener('click', function () {
       if (!confirm('Sign out?')) return;
       auth.signOut().then(function () {
@@ -1611,6 +1820,17 @@
       // Update header
       document.getElementById('my-title').textContent = currentUsername ? currentUsername + "'s Rules" : 'My Rules';
       document.getElementById('signout-btn').style.display = currentUsername ? '' : 'none';
+
+      // Large avatar (logged-in only)
+      const avatarWrap   = document.getElementById('my-avatar-wrap');
+      const avatarLargeEl = document.getElementById('my-avatar-large');
+      if (currentUsername) {
+        avatarWrap.style.display = '';
+        const cache = avatarCache[currentUsername] || {};
+        renderAvatarEl(avatarLargeEl, currentUsername, cache.emoji, cache.color);
+      } else {
+        avatarWrap.style.display = 'none';
+      }
 
       // Filter: by username if logged in, by localStorage if guest
       let mine;
