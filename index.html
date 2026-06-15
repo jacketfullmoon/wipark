@@ -177,6 +177,25 @@
       transition: opacity 0.15s;
     }
     #profile-btn:active { opacity: 0.75; }
+    #notif-badge {
+      position: absolute; top: -3px; right: -3px;
+      background: #e53935; color: #fff;
+      border-radius: 10px; padding: 0 4px;
+      font-size: 10px; font-weight: 700;
+      min-width: 16px; height: 16px;
+      line-height: 16px; text-align: center;
+      display: none; pointer-events: none;
+    }
+    .notif-item {
+      padding: 10px 0; border-bottom: 1px solid var(--divider);
+      cursor: pointer; display: flex; gap: 10px; align-items: flex-start;
+    }
+    .notif-item:last-child { border-bottom: none; }
+    .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: #e53935; flex-shrink: 0; margin-top: 5px; }
+    .notif-text { font-size: 13px; color: var(--text1); line-height: 1.4; }
+    .notif-sub  { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    #notif-section { margin-bottom: 12px; }
+    #notif-section-title { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--text3); text-transform: uppercase; margin-bottom: 4px; }
 
     #username-modal {
       display: none; position: fixed; inset: 0; z-index: 900;
@@ -1033,7 +1052,7 @@
   </div>
 
   <!-- ── PROFILE BUTTON ────────────────────────────────── -->
-  <button id="profile-btn" aria-label="My profile">👤</button>
+  <button id="profile-btn" aria-label="My profile">👤<span id="notif-badge"></span></button>
 
 
   <!-- ── LEGEND ──────────────────────────────────────── -->
@@ -1228,8 +1247,10 @@
     let pendingPinStep  = 0;      // 0=none, 1=A placed, 2=both placed
     let viewingId       = null;
     let editingId       = null;   // non-null when editing an existing rule
-    let commentsListener = null;  // Firestore unsubscribe for comment thread
+    let commentsListener       = null;  // Firestore unsubscribe for comment thread
+    let notificationsListener  = null;  // Firestore unsubscribe for notification badge
     let sheetOpen       = null;
+    let viewingUser     = null;   // non-null when my-sheet is showing another user's profile
 
     // Per-device tracking (for guests + upvotes)
     function getMyRuleIds() {
@@ -1294,7 +1315,7 @@
       }
     }
     function openEmojiPicker() {
-      if (!currentUsername) return;
+      if (!currentUsername || viewingUser) return;
       const modal = document.getElementById('emoji-picker-modal');
       const cache = avatarCache[currentUsername] || {};
       document.querySelectorAll('.emoji-opt').forEach(function(b) {
@@ -1423,8 +1444,10 @@
           modal.classList.remove('open');
           updateProfileBtn();
           document.getElementById('signout-btn').style.display = currentUsername ? '' : 'none';
+          attachNotificationsListener();
         } else {
           currentUsername = null;
+          detachNotificationsListener();
           modal.classList.add('open');
           setTimeout(function() { usernameIn.focus(); }, 300);
         }
@@ -1857,11 +1880,33 @@
       if (commentsListener) { commentsListener(); commentsListener = null; }
     }
 
+    function attachNotificationsListener() {
+      if (notificationsListener) { notificationsListener(); notificationsListener = null; }
+      if (!currentUsername) return;
+      notificationsListener = db.collection('notifications').doc(currentUsername)
+        .onSnapshot(function(snap) {
+          const unread = snap.exists ? (snap.data().unread || 0) : 0;
+          const badge  = document.getElementById('notif-badge');
+          if (!badge) return;
+          if (unread > 0) {
+            badge.textContent    = unread > 9 ? '9+' : String(unread);
+            badge.style.display  = '';
+          } else {
+            badge.style.display  = 'none';
+          }
+        }, function() {});
+    }
+
+    function detachNotificationsListener() {
+      if (notificationsListener) { notificationsListener(); notificationsListener = null; }
+      const badge = document.getElementById('notif-badge');
+      if (badge) badge.style.display = 'none';
+    }
+
     // ── VIEW SHEET ──────────────────────────────────────────────────
     function openViewSheet(id) {
       const r = restrictions.find(function (x) { return x.id === id; });
       if (!r) return;
-      viewingId = id;
 
       const color = TYPE_COLORS[r.type] || '#999';
       const badge = document.getElementById('view-badge');
@@ -1898,19 +1943,41 @@
       document.getElementById('view-delete').style.display = canEdit ? '' : 'none';
 
       // Author with avatar
-      const author = r.submittedBy || 'Anonymous';
       const authorEl = document.getElementById('view-author');
       if (r.submittedBy) {
-        const color  = avatarColor(r.submittedBy);
-        const letter = r.submittedBy[0].toUpperCase();
+        const cache   = avatarCache[r.submittedBy] || {};
+        const color   = cache.color || avatarColor(r.submittedBy);
+        const display = cache.emoji || r.submittedBy[0].toUpperCase();
+        const fsz     = cache.emoji ? '13px' : '10px';
+        authorEl.style.cursor = 'pointer';
         authorEl.innerHTML =
-          '<span class="avatar-circle" style="background:' + color + ';width:20px;height:20px;font-size:10px;display:inline-flex;margin-right:5px;vertical-align:middle">' + letter + '</span>' +
-          esc(r.submittedBy);
+          '<span class="avatar-circle" style="background:' + color + ';width:22px;height:22px;font-size:' + fsz + ';display:inline-flex;margin-right:6px;vertical-align:middle">' + esc(display) + '</span>' +
+          '<span style="text-decoration:underline;text-underline-offset:2px">' + esc(r.submittedBy) + '</span>';
+        authorEl.onclick = function () { openUserSheet(r.submittedBy); };
+        // Fetch avatar from Firestore if not cached, then re-render
+        if (!avatarCache[r.submittedBy] || (!avatarCache[r.submittedBy].emoji && !avatarCache[r.submittedBy].color)) {
+          db.collection('usernames').doc(r.submittedBy).get().then(function (snap) {
+            if (!snap.exists) return;
+            const d = snap.data();
+            avatarCache[r.submittedBy] = { emoji: d.avatar_emoji || null, color: d.avatar_color || null };
+            if (viewingId !== id) return;
+            const c2 = avatarCache[r.submittedBy];
+            const col  = c2.color || avatarColor(r.submittedBy);
+            const disp = c2.emoji || r.submittedBy[0].toUpperCase();
+            const fsz2 = c2.emoji ? '13px' : '10px';
+            authorEl.innerHTML =
+              '<span class="avatar-circle" style="background:' + col + ';width:22px;height:22px;font-size:' + fsz2 + ';display:inline-flex;margin-right:6px;vertical-align:middle">' + esc(disp) + '</span>' +
+              '<span style="text-decoration:underline;text-underline-offset:2px">' + esc(r.submittedBy) + '</span>';
+          }).catch(function () {});
+        }
       } else {
+        authorEl.style.cursor = '';
+        authorEl.onclick = null;
         authorEl.textContent = 'Anonymous';
       }
 
       openSheet('view');
+      viewingId = id;  // set AFTER openSheet so closeAllSheets(false) doesn't wipe it
       loadComments(id);
     }
 
@@ -2148,6 +2215,7 @@
       if (!confirm('Sign out?')) return;
       auth.signOut().then(function () {
         currentUsername = null;
+        detachNotificationsListener();
         updateProfileBtn();
         closeAllSheets();
         showToast('Signed out');
@@ -2166,12 +2234,53 @@
       // Large avatar (logged-in only)
       const avatarWrap   = document.getElementById('my-avatar-wrap');
       const avatarLargeEl = document.getElementById('my-avatar-large');
+      avatarLargeEl.style.cursor = '';  // restore editable cursor
       if (currentUsername) {
         avatarWrap.style.display = '';
         const cache = avatarCache[currentUsername] || {};
         renderAvatarEl(avatarLargeEl, currentUsername, cache.emoji, cache.color);
       } else {
         avatarWrap.style.display = 'none';
+      }
+
+      // Notifications: load recent mentions, then mark as read
+      const oldNotifSection = document.getElementById('notif-section');
+      if (oldNotifSection) oldNotifSection.remove();
+
+      if (currentUsername) {
+        try {
+          const notifSnap = await db.collection('notifications').doc(currentUsername)
+            .collection('items').orderBy('createdAt', 'desc').limit(10).get();
+          if (!notifSnap.empty) {
+            const notifSection = document.createElement('div');
+            notifSection.id = 'notif-section';
+            notifSection.innerHTML = '<div id="notif-section-title">Mentions</div>';
+            notifSnap.forEach(function(d) {
+              const n    = d.data();
+              const item = document.createElement('div');
+              item.className = 'notif-item';
+              item.innerHTML =
+                '<div class="notif-dot"></div>' +
+                '<div><div class="notif-text"><strong>' + esc(n.from || 'someone') + '</strong> mentioned you' +
+                  (n.streetName ? ' on <em>' + esc(n.streetName) + '</em>' : '') + '</div>' +
+                  '<div class="notif-sub">"' + esc((n.text || '').slice(0, 60)) + (n.text && n.text.length > 60 ? '…' : '') + '"</div>' +
+                '</div>';
+              if (n.ruleId) {
+                item.addEventListener('click', function () {
+                  closeAllSheets();
+                  const rx = restrictions.find(function(x) { return x.id === n.ruleId; });
+                  if (rx) map.flyTo({ center: [rx.lng, rx.lat], zoom: Math.max(map.getZoom(), 16), duration: 600 });
+                  setTimeout(function () { openViewSheet(n.ruleId); }, 700);
+                });
+              }
+              notifSection.appendChild(item);
+            });
+            list.prepend(notifSection);
+            // Mark as read
+            db.collection('notifications').doc(currentUsername)
+              .set({ unread: 0 }, { merge: true }).catch(function(){});
+          }
+        } catch(e) {}
       }
 
       // Filter: by username if logged in, by localStorage if guest
@@ -2186,12 +2295,17 @@
       document.getElementById('my-subtitle').textContent =
         mine.length + ' rule' + (mine.length !== 1 ? 's' : '');
 
+      // Remove loading placeholder (keep notif-section if it was prepended)
+      list.querySelectorAll('.empty-msg').forEach(function(el) { el.remove(); });
+
       if (!mine.length) {
-        list.innerHTML = '<p class="empty-msg">You haven\'t added any rules yet.</p>';
+        const p = document.createElement('p');
+        p.className = 'empty-msg';
+        p.textContent = 'You haven\'t added any rules yet.';
+        list.appendChild(p);
         return;
       }
 
-      list.innerHTML = '';
       mine.forEach(function (r) {
         const color   = TYPE_COLORS[r.type] || '#999';
         const dayStr  = (r.days || []).map(function (d) { return DAY_LABELS[d] || d; }).join(', ');
@@ -2232,6 +2346,71 @@
       });
     }
 
+    // ── USER PROFILE SHEET ──────────────────────────────────────────
+    async function openUserSheet(username) {
+      viewingUser = username;
+      const list = document.getElementById('my-list');
+      list.innerHTML = '<p class="empty-msg">Loading…</p>';
+      openSheet('my');
+
+      document.getElementById('my-title').textContent = username + "'s Pins";
+      document.getElementById('signout-btn').style.display = 'none';
+
+      // Fetch avatar from Firestore if not cached
+      if (!avatarCache[username]) {
+        try {
+          const snap = await db.collection('usernames').doc(username).get();
+          if (snap.exists) {
+            const d = snap.data();
+            avatarCache[username] = { emoji: d.avatar_emoji || null, color: d.avatar_color || null };
+          }
+        } catch(e) {}
+      }
+
+      const avatarWrap    = document.getElementById('my-avatar-wrap');
+      const avatarLargeEl = document.getElementById('my-avatar-large');
+      avatarWrap.style.display = '';
+      avatarLargeEl.style.cursor = 'default';
+      const cache = avatarCache[username] || {};
+      renderAvatarEl(avatarLargeEl, username, cache.emoji, cache.color);
+
+      const userRules = restrictions.filter(function (r) { return r.submittedBy === username; });
+      document.getElementById('my-subtitle').textContent =
+        userRules.length + ' pin' + (userRules.length !== 1 ? 's' : '');
+
+      if (!userRules.length) {
+        list.innerHTML = '<p class="empty-msg">No pins added yet.</p>';
+        return;
+      }
+
+      list.innerHTML = '';
+      userRules.forEach(function (r) {
+        const color   = TYPE_COLORS[r.type] || '#999';
+        const dayStr  = (r.days || []).map(function (d) { return DAY_LABELS[d] || d; }).join(', ');
+        const timeStr = fmt12(r.startTime) + ' – ' + fmt12(r.endTime);
+
+        const item = document.createElement('div');
+        item.className = 'my-item';
+        item.style.cursor = 'pointer';
+        item.innerHTML =
+          '<div class="my-item-dot" style="background:' + color + '"></div>' +
+          '<div class="my-item-body">' +
+            '<div class="my-item-street">' + esc(r.streetName) + '</div>' +
+            '<div class="my-item-hood">' + esc(r.neighborhood) + '</div>' +
+            '<div class="my-item-info">' + esc(TYPE_LABELS[r.type] || r.type) +
+              ' · ' + esc(dayStr) + ' · ' + esc(timeStr) + '</div>' +
+          '</div>';
+
+        item.addEventListener('click', function () {
+          closeAllSheets();
+          map.flyTo({ center: [r.lng, r.lat], zoom: Math.max(map.getZoom(), 16), duration: 600 });
+          setTimeout(function () { openViewSheet(r.id); }, 700);
+        });
+
+        list.appendChild(item);
+      });
+    }
+
     // ── COMMENT POST ────────────────────────────────────────────────
     document.getElementById('comment-send').addEventListener('click', async function () {
       const input = document.getElementById('comment-input');
@@ -2250,6 +2429,28 @@
             createdAt:    firebase.firestore.FieldValue.serverTimestamp()
           });
         input.value = '';
+
+        // Notify @mentioned users
+        const mentionRe = /\B@([a-zA-Z0-9_]+)/g;
+        const seen = new Set();
+        let m;
+        while ((m = mentionRe.exec(text)) !== null) {
+          const u = m[1].toLowerCase();
+          if (u === (currentUsername || '').toLowerCase()) continue;
+          if (seen.has(u)) continue;
+          seen.add(u);
+          const r = restrictions.find(function(x) { return x.id === viewingId; });
+          const notifRef = db.collection('notifications').doc(u);
+          notifRef.collection('items').add({
+            from:        currentUsername || 'anonymous',
+            ruleId:      viewingId,
+            streetName:  r ? r.streetName : '',
+            text:        text,
+            createdAt:   firebase.firestore.FieldValue.serverTimestamp()
+          }).catch(function(){});
+          notifRef.set({ unread: firebase.firestore.FieldValue.increment(1) }, { merge: true })
+            .catch(function(){});
+        }
       } catch(e) {
         showToast('Could not post comment');
       } finally {
@@ -2286,6 +2487,7 @@
       document.getElementById('sheet-backdrop').classList.remove('visible');
       sheetOpen = null;
       viewingId = null;
+      viewingUser = null;
     }
 
     document.getElementById('sheet-backdrop').addEventListener('click', function () {
