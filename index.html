@@ -146,6 +146,73 @@
     }
     .topbar-btn:active { opacity: 0.75; }
 
+    #search-btn {
+      background: none;
+      border: none;
+      color: #9ca3af;
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; border-radius: 8px; flex-shrink: 0;
+    }
+    #search-btn:active { background: rgba(255,255,255,0.1); }
+    #search-btn.active { color: #60a5fa; }
+
+    #search-panel {
+      position: fixed;
+      top: calc(var(--safe-top) + 50px);
+      left: 0; right: 0;
+      z-index: 249;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 4px 20px rgba(0,0,0,.18);
+      padding: 10px 14px 12px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+    #search-panel.open { display: flex; }
+
+    .search-section-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--text3); margin-bottom: 5px;
+    }
+    .search-input-row {
+      display: flex; align-items: center;
+      background: var(--surface); border-radius: 10px; overflow: hidden;
+    }
+    .search-input-row input {
+      flex: 1; border: none; outline: none;
+      background: transparent; font-family: var(--font);
+      font-size: 15px; color: var(--text);
+      padding: 10px 4px 10px 12px;
+      -webkit-appearance: none; appearance: none;
+    }
+    .search-input-row input::placeholder { color: var(--text3); }
+    .search-input-row input::-webkit-search-cancel-button { display: none; }
+    .search-clear-btn {
+      background: none; border: none; font-size: 20px;
+      color: var(--text3); padding: 0 12px; cursor: pointer; line-height: 1;
+    }
+    .search-results-list {
+      display: none; background: var(--surface);
+      border-radius: 10px; overflow: hidden; margin-top: 4px;
+      max-height: 220px; overflow-y: auto;
+    }
+    .search-results-list.open { display: block; }
+    .search-result-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; cursor: pointer;
+      border-top: 1px solid var(--border);
+    }
+    .search-result-item:first-child { border-top: none; }
+    .search-result-item:active { background: var(--surface2); }
+    .search-result-name {
+      font-size: 14px; font-weight: 600; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .search-result-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+    .search-no-results { font-size: 13px; color: var(--text3); padding: 12px 14px; text-align: center; }
+
     #btn-add {
       background: var(--accent);
       color: #fff;
@@ -862,8 +929,31 @@
     <span id="topbar-divider">|</span>
     <span id="rule-count"></span>
     <div id="topbar-right">
+      <button id="search-btn" aria-label="Search">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="2"/><line x1="11.7" y1="11.7" x2="16" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
       <button class="topbar-btn" id="btn-laws">🚗 LA Laws</button>
       <button class="topbar-btn" id="btn-add">+ Add Rule</button>
+    </div>
+  </div>
+
+  <!-- Search panel (slides below topbar) -->
+  <div id="search-panel">
+    <div>
+      <div class="search-section-label">Search Pins</div>
+      <div class="search-input-row">
+        <input id="search-input-pins" type="search" placeholder="Street, neighborhood, type…" autocomplete="off" />
+        <button class="search-clear-btn" id="search-clear-pins" aria-label="Clear">×</button>
+      </div>
+      <div class="search-results-list" id="search-results-pins"></div>
+    </div>
+    <div>
+      <div class="search-section-label">Search Users</div>
+      <div class="search-input-row">
+        <input id="search-input-users" type="search" placeholder="@username" autocomplete="off" />
+        <button class="search-clear-btn" id="search-clear-users" aria-label="Clear">×</button>
+      </div>
+      <div class="search-results-list" id="search-results-users"></div>
     </div>
   </div>
 
@@ -2541,6 +2631,158 @@
     document.getElementById('laws-backdrop').addEventListener('click', function (e) {
       if (e.target === this) this.classList.remove('open');
     });
+
+    // ── SEARCH ──────────────────────────────────────────────────────
+    (function () {
+      const panel       = document.getElementById('search-panel');
+      const searchBtn   = document.getElementById('search-btn');
+      const inputPins   = document.getElementById('search-input-pins');
+      const clearPins   = document.getElementById('search-clear-pins');
+      const resultsPins = document.getElementById('search-results-pins');
+      const inputUsers  = document.getElementById('search-input-users');
+      const clearUsers  = document.getElementById('search-clear-users');
+      const resultsUsers = document.getElementById('search-results-users');
+      let debounceUsers = null;
+      let searchIsOpen  = false;
+
+      function openSearch() {
+        searchIsOpen = true;
+        panel.classList.add('open');
+        searchBtn.classList.add('active');
+        inputPins.focus();
+      }
+
+      function closeSearch() {
+        searchIsOpen = false;
+        panel.classList.remove('open');
+        searchBtn.classList.remove('active');
+        inputPins.value = '';
+        inputUsers.value = '';
+        resultsPins.innerHTML = ''; resultsPins.classList.remove('open');
+        resultsUsers.innerHTML = ''; resultsUsers.classList.remove('open');
+        clearTimeout(debounceUsers);
+      }
+
+      searchBtn.addEventListener('click', function () {
+        if (searchIsOpen) { closeSearch(); } else { openSearch(); }
+      });
+
+      clearPins.addEventListener('click', function () {
+        inputPins.value = '';
+        resultsPins.innerHTML = ''; resultsPins.classList.remove('open');
+        inputPins.focus();
+      });
+
+      clearUsers.addEventListener('click', function () {
+        inputUsers.value = '';
+        resultsUsers.innerHTML = ''; resultsUsers.classList.remove('open');
+        clearTimeout(debounceUsers);
+        inputUsers.focus();
+      });
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && searchIsOpen) closeSearch();
+      });
+
+      document.addEventListener('pointerdown', function (e) {
+        if (searchIsOpen && !panel.contains(e.target) && !searchBtn.contains(e.target)) {
+          closeSearch();
+        }
+      });
+
+      // ── Pin search (instant, local)
+      inputPins.addEventListener('input', function () {
+        const q = this.value.trim().toLowerCase();
+        if (q.length < 2) {
+          resultsPins.innerHTML = ''; resultsPins.classList.remove('open'); return;
+        }
+        const matches = restrictions.filter(function (r) {
+          return (r.streetName   && r.streetName.toLowerCase().includes(q)) ||
+                 (r.neighborhood && r.neighborhood.toLowerCase().includes(q)) ||
+                 ((TYPE_LABELS[r.type] || r.type).toLowerCase().includes(q));
+        }).slice(0, 8);
+
+        resultsPins.innerHTML = '';
+        if (!matches.length) {
+          resultsPins.innerHTML = '<p class="search-no-results">No pins found</p>';
+          resultsPins.classList.add('open'); return;
+        }
+        matches.forEach(function (r) {
+          const color = TYPE_COLORS[r.type] || '#999';
+          const item  = document.createElement('div');
+          item.className = 'search-result-item';
+          item.innerHTML =
+            '<div style="width:10px;height:10px;border-radius:50%;background:' + color + ';flex-shrink:0"></div>' +
+            '<div style="flex:1;min-width:0">' +
+              '<div class="search-result-name">' + esc(r.streetName) + '</div>' +
+              '<div class="search-result-sub">' + esc(r.neighborhood) + ' · ' + esc(TYPE_LABELS[r.type] || r.type) + '</div>' +
+            '</div>';
+          item.addEventListener('pointerdown', function (e) { e.preventDefault(); });
+          item.addEventListener('click', function () {
+            closeSearch();
+            closeAllSheets();
+            map.flyTo({ center: [r.lng, r.lat], zoom: Math.max(map.getZoom(), 16), duration: 700, essential: true });
+            setTimeout(function () { openViewSheet(r.id); }, 750);
+          });
+          resultsPins.appendChild(item);
+        });
+        resultsPins.classList.add('open');
+      });
+
+      // ── User search (Firestore prefix, debounced 300ms)
+      inputUsers.addEventListener('input', function () {
+        const q = this.value.trim().toLowerCase();
+        clearTimeout(debounceUsers);
+        if (q.length < 2) {
+          resultsUsers.innerHTML = ''; resultsUsers.classList.remove('open'); return;
+        }
+        debounceUsers = setTimeout(async function () {
+          try {
+            const snap = await db.collection('usernames')
+              .orderBy(firebase.firestore.FieldPath.documentId())
+              .startAt(q)
+              .endAt(q + '')
+              .limit(5)
+              .get();
+            resultsUsers.innerHTML = '';
+            if (snap.empty) {
+              resultsUsers.innerHTML = '<p class="search-no-results">No users found</p>';
+              resultsUsers.classList.add('open'); return;
+            }
+            snap.forEach(function (doc) {
+              const username = doc.id;
+              const data     = doc.data();
+              if (!avatarCache[username]) {
+                avatarCache[username] = { emoji: data.avatar_emoji || null, color: data.avatar_color || null };
+              }
+              const cache   = avatarCache[username];
+              const bgColor = cache.color || avatarColor(username);
+              const display = cache.emoji || username[0].toUpperCase();
+              const fsz     = cache.emoji ? '15px' : '11px';
+              const pinCount = restrictions.filter(function (r) { return r.submittedBy === username; }).length;
+              const item = document.createElement('div');
+              item.className = 'search-result-item';
+              item.innerHTML =
+                '<div class="avatar-circle" style="background:' + bgColor + ';width:30px;height:30px;font-size:' + fsz + '">' + esc(display) + '</div>' +
+                '<div style="flex:1;min-width:0">' +
+                  '<div class="search-result-name">@' + esc(username) + '</div>' +
+                  '<div class="search-result-sub">' + pinCount + ' pin' + (pinCount !== 1 ? 's' : '') + '</div>' +
+                '</div>';
+              item.addEventListener('pointerdown', function (e) { e.preventDefault(); });
+              item.addEventListener('click', function () {
+                closeSearch();
+                openUserSheet(username);
+              });
+              resultsUsers.appendChild(item);
+            });
+            resultsUsers.classList.add('open');
+          } catch (e) {
+            resultsUsers.innerHTML = '<p class="search-no-results">Could not search users</p>';
+            resultsUsers.classList.add('open');
+          }
+        }, 300);
+      });
+    })();
 
     // ── LEGEND ──────────────────────────────────────────────────────
     document.getElementById('legend-btn').addEventListener('click', function () {
