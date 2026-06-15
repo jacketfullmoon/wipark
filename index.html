@@ -710,31 +710,15 @@
     /* ── AUTH MODAL ──────────────────────────────────────────────── */
 
     /* ── LEGEND ──────────────────────────────────────────────────── */
-    #legend-btn {
-      position: fixed;
-      bottom: calc(var(--safe-bottom) + 38px);
-      right: calc(var(--safe-right) + 10px);
-      z-index: 300;
-      background: var(--bg);
-      border: none; border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,.18);
-      padding: 9px 14px;
-      font-family: var(--font); font-size: 13px; font-weight: 700;
-      color: var(--text2);
-      cursor: pointer;
-    }
-    #legend-btn:active { background: var(--surface); }
-
     #legend-panel {
       position: fixed;
-      bottom: calc(var(--safe-bottom) + 76px);
-      right: calc(var(--safe-right) + 10px);
-      z-index: 300;
+      top: 0; right: 0;   /* overridden by JS on open */
+      z-index: 400;
       background: var(--bg);
       border-radius: 14px;
-      box-shadow: 0 4px 20px rgba(0,0,0,.18);
+      box-shadow: 0 4px 20px rgba(0,0,0,.22);
       padding: 14px 16px;
-      min-width: 175px;
+      min-width: 185px;
       display: none;
     }
     #legend-panel.open { display: block; }
@@ -1167,8 +1151,7 @@
   <button id="profile-btn" aria-label="My profile">👤<span id="notif-badge"></span></button>
 
 
-  <!-- ── LEGEND ──────────────────────────────────────── -->
-  <button id="legend-btn">📍 Legend</button>
+  <!-- ── FILTER PANEL ────────────────────────────────── -->
   <div id="legend-panel">
     <div class="legend-title">Legend &amp; Filter <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:9px;color:var(--text3)">(tap to toggle)</span></div>
     <div id="legend-filter-actions">
@@ -1646,6 +1629,36 @@
       showUserHeading: true
     });
     map.addControl(geolocate, 'top-right');
+
+    // Eye / filter button below geolocate
+    map.addControl({
+      onAdd: function() {
+        const div = document.createElement('div');
+        div.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+        div.innerHTML =
+          '<button id="filter-ctrl-btn" title="Filter types" style="width:29px;height:29px;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;border:none;background:transparent;position:relative">'
+          + '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+          + '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>'
+          + '<circle cx="12" cy="12" r="3"/>'
+          + '</svg>'
+          + '<span id="filter-active-dot" style="display:none;position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:1.5px solid #fff"></span>'
+          + '</button>';
+        div.querySelector('#filter-ctrl-btn').addEventListener('click', function() {
+          const panel = document.getElementById('legend-panel');
+          if (panel.classList.contains('open')) {
+            panel.classList.remove('open');
+            return;
+          }
+          const rect = this.getBoundingClientRect();
+          panel.style.top  = rect.top + 'px';
+          panel.style.right = (window.innerWidth - rect.left + 8) + 'px';
+          panel.style.left  = 'auto';
+          panel.classList.add('open');
+        });
+        return div;
+      },
+      onRemove: function() {}
+    }, 'top-right');
 
     map.on('load', function () {
       geolocate.trigger();
@@ -2837,7 +2850,7 @@
       });
     })();
 
-    // ── LEGEND / FILTER ─────────────────────────────────────────────
+    // ── FILTER ──────────────────────────────────────────────────────
     function applyTypeFilter() {
       const types = Array.from(activeTypes);
       const allOn = types.length === Object.keys(TYPE_LABELS).length;
@@ -2847,13 +2860,10 @@
       ['r-fill', 'r-border', 'r-line'].forEach(function(lid) {
         map.setFilter(lid, filterExpr);
       });
-      const btn = document.getElementById('legend-btn');
-      btn.textContent = allOn ? '📍 Legend' : '📍 Filter (' + types.length + ')';
+      const dot = document.getElementById('filter-active-dot');
+      if (dot) dot.style.display = allOn ? 'none' : 'block';
     }
 
-    document.getElementById('legend-btn').addEventListener('click', function () {
-      document.getElementById('legend-panel').classList.toggle('open');
-    });
     document.querySelectorAll('.legend-row[data-type]').forEach(function(row) {
       row.addEventListener('click', function() {
         const t = this.dataset.type;
@@ -2879,8 +2889,8 @@
     });
     document.addEventListener('pointerdown', function (e) {
       const panel = document.getElementById('legend-panel');
-      const btn   = document.getElementById('legend-btn');
-      if (panel.classList.contains('open') && !panel.contains(e.target) && !btn.contains(e.target)) {
+      const btn   = document.getElementById('filter-ctrl-btn');
+      if (panel.classList.contains('open') && !panel.contains(e.target) && (!btn || !btn.contains(e.target))) {
         panel.classList.remove('open');
       }
     });
