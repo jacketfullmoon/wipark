@@ -150,12 +150,9 @@
       background: rgba(255,255,255,0.12);
       border: none;
       color: #e5e7eb;
-      padding: 6px 10px;
-      border-radius: 10px;
-      font-family: var(--font);
-      font-size: 13px;
-      font-weight: 600;
-      display: flex; align-items: center; gap: 5px;
+      width: 34px; height: 34px;
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
       cursor: pointer; flex-shrink: 0;
       transition: background 0.15s;
     }
@@ -935,10 +932,9 @@
     <span id="rule-count"></span>
     <div id="topbar-right">
       <button id="search-btn" aria-label="Search">
-        <svg width="15" height="15" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="2"/><line x1="11.7" y1="11.7" x2="16" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        Search
+        <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="2"/><line x1="11.7" y1="11.7" x2="16" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
-      <button class="topbar-btn" id="btn-laws">🚗 LA Laws</button>
+      <button class="topbar-btn" id="btn-laws">LA Laws</button>
       <button class="topbar-btn" id="btn-add">+ Add Rule</button>
     </div>
   </div>
