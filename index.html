@@ -632,6 +632,44 @@
     }
     .form-textarea { resize: none; height: 72px; }
 
+    /* ── TYPE PICKER ─────────────────────────────────────────── */
+    #type-picker { position: relative; }
+    #type-trigger {
+      width: 100%; display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 12px; font-family: var(--font); font-size: 16px;
+      color: var(--text); cursor: pointer; text-align: left;
+      transition: border-color .15s;
+    }
+    #type-trigger.open { border-color: var(--accent); background: var(--bg); }
+    .type-trigger-dot {
+      width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid rgba(0,0,0,.12); box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+    #type-dropdown {
+      display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+      background: var(--bg); border: 1.5px solid var(--border);
+      border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.14);
+      z-index: 500; overflow: hidden; max-height: 260px; overflow-y: auto;
+    }
+    #type-dropdown.open { display: block; }
+    .type-group-label {
+      padding: 8px 14px 4px;
+      font-size: 10px; font-weight: 700; letter-spacing: .5px;
+      text-transform: uppercase; color: var(--text3);
+    }
+    .type-opt {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; cursor: pointer; transition: background .1s;
+    }
+    .type-opt:active, .type-opt.selected { background: var(--surface); }
+    .type-opt-dot {
+      width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid rgba(0,0,0,.12); box-shadow: 0 1px 3px rgba(0,0,0,.18);
+    }
+    .type-opt-label { font-size: 14px; color: var(--text); }
+
     .time-row { display: flex; gap: 10px; }
     .time-row .form-group { flex: 1; }
 
@@ -1045,23 +1083,29 @@
 
       <div class="form-group">
         <label class="form-label">Restriction type *</label>
-        <select class="form-select" id="f-type">
-          <optgroup label="Parking Restrictions">
-            <option value="no_parking">No Parking</option>
-            <option value="2hr_limit">2-Hour Limit</option>
-            <option value="4hr_limit">4-Hour Limit</option>
-            <option value="permit_only">Permit Only</option>
-            <option value="street_cleaning">Street Cleaning</option>
-            <option value="free_parking">Free Parking</option>
-          </optgroup>
-          <optgroup label="Curb Color">
-            <option value="curb_red">Red Curb</option>
-            <option value="curb_yellow">Yellow Curb</option>
-            <option value="curb_white">White Curb</option>
-            <option value="curb_green">Green Curb</option>
-            <option value="curb_blue">Blue Curb</option>
-          </optgroup>
-        </select>
+        <div id="type-picker">
+          <button type="button" id="type-trigger">
+            <span class="type-trigger-dot" id="type-trigger-dot" style="background:var(--c-no-parking)"></span>
+            <span id="type-trigger-label">No Parking</span>
+            <span style="margin-left:auto;color:var(--text3);font-size:11px">▾</span>
+          </button>
+          <div id="type-dropdown">
+            <div class="type-group-label">Parking Restrictions</div>
+            <div class="type-opt selected" data-val="no_parking"><span class="type-opt-dot" style="background:var(--c-no-parking)"></span><span class="type-opt-label">No Parking</span></div>
+            <div class="type-opt" data-val="2hr_limit"><span class="type-opt-dot" style="background:var(--c-2hr)"></span><span class="type-opt-label">2-Hour Limit</span></div>
+            <div class="type-opt" data-val="4hr_limit"><span class="type-opt-dot" style="background:var(--c-4hr)"></span><span class="type-opt-label">4-Hour Limit</span></div>
+            <div class="type-opt" data-val="permit_only"><span class="type-opt-dot" style="background:var(--c-permit)"></span><span class="type-opt-label">Permit Only</span></div>
+            <div class="type-opt" data-val="street_cleaning"><span class="type-opt-dot" style="background:var(--c-cleaning)"></span><span class="type-opt-label">Street Cleaning</span></div>
+            <div class="type-opt" data-val="free_parking"><span class="type-opt-dot" style="background:var(--c-free)"></span><span class="type-opt-label">Free Parking</span></div>
+            <div class="type-group-label">Curb Color</div>
+            <div class="type-opt" data-val="curb_red"><span class="type-opt-dot" style="background:var(--c-curb-red)"></span><span class="type-opt-label">Red Curb</span></div>
+            <div class="type-opt" data-val="curb_yellow"><span class="type-opt-dot" style="background:var(--c-curb-yellow)"></span><span class="type-opt-label">Yellow Curb</span></div>
+            <div class="type-opt" data-val="curb_white"><span class="type-opt-dot" style="background:var(--c-curb-white)"></span><span class="type-opt-label">White Curb</span></div>
+            <div class="type-opt" data-val="curb_green"><span class="type-opt-dot" style="background:var(--c-curb-green)"></span><span class="type-opt-label">Green Curb</span></div>
+            <div class="type-opt" data-val="curb_blue"><span class="type-opt-dot" style="background:var(--c-curb-blue)"></span><span class="type-opt-label">Blue Curb</span></div>
+          </div>
+          <input type="hidden" id="f-type" value="no_parking">
+        </div>
       </div>
 
       <div class="form-group">
@@ -2196,7 +2240,7 @@
 
       document.getElementById('f-street').value = '';
       document.getElementById('f-hood').value   = '';
-      document.getElementById('f-type').value   = 'no_parking';
+      setTypePicker('no_parking');
       document.getElementById('f-start').value  = '08:00';
       document.getElementById('f-end').value    = '10:00';
       document.getElementById('f-notes').value  = '';
@@ -2213,7 +2257,7 @@
 
       document.getElementById('f-street').value = r.streetName   || '';
       document.getElementById('f-hood').value   = r.neighborhood || '';
-      document.getElementById('f-type').value   = r.type         || 'no_parking';
+      setTypePicker(r.type || 'no_parking');
       document.getElementById('f-start').value  = r.startTime    || '08:00';
       document.getElementById('f-end').value    = r.endTime      || '10:00';
       document.getElementById('f-notes').value  = r.notes        || '';
@@ -2892,6 +2936,38 @@
       const btn   = document.getElementById('filter-ctrl-btn');
       if (panel.classList.contains('open') && !panel.contains(e.target) && (!btn || !btn.contains(e.target))) {
         panel.classList.remove('open');
+      }
+    });
+
+    // ── TYPE PICKER ──────────────────────────────────────────────────
+    function setTypePicker(val) {
+      const opt = document.querySelector('.type-opt[data-val="' + val + '"]');
+      if (!opt) return;
+      document.getElementById('f-type').value = val;
+      document.getElementById('type-trigger-dot').style.background =
+        opt.querySelector('.type-opt-dot').style.background;
+      document.getElementById('type-trigger-label').textContent =
+        opt.querySelector('.type-opt-label').textContent;
+      document.querySelectorAll('.type-opt').forEach(function(o) { o.classList.remove('selected'); });
+      opt.classList.add('selected');
+    }
+    document.getElementById('type-trigger').addEventListener('click', function() {
+      const dd = document.getElementById('type-dropdown');
+      const open = dd.classList.toggle('open');
+      this.classList.toggle('open', open);
+    });
+    document.getElementById('type-dropdown').addEventListener('click', function(e) {
+      const opt = e.target.closest('.type-opt');
+      if (!opt) return;
+      setTypePicker(opt.dataset.val);
+      document.getElementById('type-dropdown').classList.remove('open');
+      document.getElementById('type-trigger').classList.remove('open');
+    });
+    document.addEventListener('pointerdown', function(e) {
+      const picker = document.getElementById('type-picker');
+      if (!picker.contains(e.target)) {
+        document.getElementById('type-dropdown').classList.remove('open');
+        document.getElementById('type-trigger').classList.remove('open');
       }
     });
 
