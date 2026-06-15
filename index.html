@@ -494,6 +494,29 @@
       cursor: pointer; padding: 8px;
     }
     .btn-delete:active { opacity: .7; }
+    .btn-edit {
+      background: none; border: 1.5px solid var(--accent);
+      font-family: var(--font); border-radius: 10px;
+      font-size: 13px; color: var(--accent); font-weight: 600;
+      cursor: pointer; padding: 7px 14px;
+    }
+    .btn-edit:active { background: var(--accent-light); }
+    .my-item-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+    .my-item-edit {
+      background: none; border: 1px solid var(--accent); border-radius: 8px;
+      font-size: 12px; color: var(--accent); font-weight: 600;
+      cursor: pointer; padding: 4px 8px; font-family: var(--font);
+    }
+    .my-item-delete {
+      background: none; border: none;
+      font-size: 12px; color: #ef4444;
+      cursor: pointer; padding: 4px; font-family: var(--font);
+    }
+    #add-repin {
+      background: none; border: 1px solid var(--border); border-radius: 8px;
+      padding: 2px 8px; font-size: 11px; color: var(--accent); cursor: pointer;
+      font-family: var(--font); white-space: nowrap; flex-shrink: 0;
+    }
 
     /* ── FORM ────────────────────────────────────────────────────── */
     .form-group { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
@@ -591,11 +614,6 @@
     }
     .my-item-hood  { font-size: 12px; color: var(--text3); margin-bottom: 5px; }
     .my-item-info  { font-size: 13px; color: var(--text2); }
-    .my-item-delete {
-      background: none; border: none;
-      font-size: 12px; color: #ef4444;
-      cursor: pointer; padding: 4px; flex-shrink: 0;
-    }
     .empty-msg {
       font-size: 14px; color: var(--text3);
       text-align: center; padding: 24px 0;
@@ -820,7 +838,10 @@
 
       <div class="action-row">
         <button class="btn-upvote" id="view-upvote">👍 <span id="view-upvote-count">0</span> confirmed</button>
-        <button class="btn-delete" id="view-delete" style="display:none">Delete</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn-edit"   id="view-edit"   style="display:none">Edit</button>
+          <button class="btn-delete" id="view-delete" style="display:none">Delete</button>
+        </div>
       </div>
 
       <p style="font-size:11px;color:var(--text3);margin-top:10px">
@@ -833,8 +854,11 @@
   <div class="sheet" id="add-sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-header">
-      <div class="sheet-title">Add Parking Rule</div>
-      <div id="add-coords" class="sheet-subtitle"></div>
+      <div class="sheet-title" id="add-sheet-title">Add Parking Rule</div>
+      <div class="sheet-subtitle" style="display:flex;align-items:center;gap:6px">
+        <span id="add-coords"></span>
+        <button id="add-repin" style="display:none">Move pins</button>
+      </div>
       <button class="sheet-close" id="add-close">×</button>
     </div>
     <div class="sheet-body">
@@ -1148,6 +1172,7 @@
     let pendingPinB     = null;   // { lat, lng } end of restriction
     let pendingPinStep  = 0;      // 0=none, 1=A placed, 2=both placed
     let viewingId       = null;
+    let editingId       = null;   // non-null when editing an existing rule
     let sheetOpen       = null;
 
     // Per-device tracking (for guests + upvotes)
@@ -1630,10 +1655,11 @@
       map.getCanvas().style.cursor = '';
     }
 
-    // Full cancel: reset UI + remove any dropped pins
+    // Full cancel: reset UI + remove any dropped pins + clear edit state
     function exitAddMode() {
       exitAddModeUI();
       clearPendingPins();
+      editingId = null;
     }
 
     function clearPendingPins() {
@@ -1699,7 +1725,11 @@
           });
         } catch(e) {}
         exitAddModeUI();
-        openAddSheet();
+        if (editingId) {
+          openEditForm();
+        } else {
+          openAddSheet();
+        }
       }
     }
 
@@ -1736,12 +1766,12 @@
       upvoteBtn.disabled  = false;
       document.getElementById('view-upvote-count').textContent = r.upvotes || 0;
 
-      // Delete — show for username match OR device-local guest submissions
-      const deleteBtn = document.getElementById('view-delete');
-      const canDelete = currentUsername
+      // Edit / Delete — show for username match OR device-local guest submissions
+      const canEdit = currentUsername
         ? r.submittedBy === currentUsername
         : getMyRuleIds().includes(r.id);
-      deleteBtn.style.display = canDelete ? '' : 'none';
+      document.getElementById('view-edit').style.display   = canEdit ? '' : 'none';
+      document.getElementById('view-delete').style.display = canEdit ? '' : 'none';
 
       // Author with avatar
       const author = r.submittedBy || 'Anonymous';
@@ -1760,6 +1790,22 @@
     }
 
     document.getElementById('view-close').addEventListener('click', closeAllSheets);
+
+    document.getElementById('view-edit').addEventListener('click', function () {
+      closeAllSheets();
+      openEditSheet(viewingId);
+    });
+
+    document.getElementById('add-repin').addEventListener('click', function () {
+      closeAllSheets(false);
+      clearPendingPins();
+      addMode = true;
+      document.getElementById('btn-add').textContent = '✕ Cancel';
+      document.getElementById('btn-add').classList.add('active');
+      document.getElementById('add-hint').textContent = '📍 Tap new START of restriction';
+      document.getElementById('add-hint').classList.add('show');
+      map.getCanvas().style.cursor = 'crosshair';
+    });
 
     document.getElementById('view-upvote').addEventListener('click', async function () {
       if (!viewingId) return;
@@ -1797,29 +1843,70 @@
 
     // ── ADD SHEET ───────────────────────────────────────────────────
     function openAddSheet() {
+      editingId = null;
       const a = pendingPinA, b = pendingPinB;
+      document.getElementById('add-sheet-title').textContent = 'Add Parking Rule';
       document.getElementById('add-coords').textContent = b
-        ? 'Start pin → End pin (line added to map)'
+        ? 'Start pin → End pin'
         : (a ? a.lat.toFixed(5) + ', ' + a.lng.toFixed(5) : '');
+      document.getElementById('add-repin').style.display = 'none';
+      document.getElementById('add-submit').textContent = 'Save Rule';
+      document.getElementById('add-submit').disabled = false;
 
-      // Reset form
       document.getElementById('f-street').value = '';
       document.getElementById('f-hood').value   = '';
       document.getElementById('f-type').value   = 'no_parking';
       document.getElementById('f-start').value  = '08:00';
       document.getElementById('f-end').value    = '10:00';
       document.getElementById('f-notes').value  = '';
+      document.querySelectorAll('.day-pill').forEach(function (p) { p.classList.remove('selected'); });
+
+      openSheet('add');
+    }
+
+    function openEditSheet(id) {
+      const r = restrictions.find(function (x) { return x.id === id; });
+      if (!r) return;
+      editingId = id;
+      clearPendingPins();
+
+      document.getElementById('f-street').value = r.streetName   || '';
+      document.getElementById('f-hood').value   = r.neighborhood || '';
+      document.getElementById('f-type').value   = r.type         || 'no_parking';
+      document.getElementById('f-start').value  = r.startTime    || '08:00';
+      document.getElementById('f-end').value    = r.endTime      || '10:00';
+      document.getElementById('f-notes').value  = r.notes        || '';
       document.querySelectorAll('.day-pill').forEach(function (p) {
-        p.classList.remove('selected');
+        p.classList.toggle('selected', (r.days || []).includes(p.dataset.day));
       });
 
+      openEditForm();
+    }
+
+    function openEditForm() {
+      const r   = restrictions.find(function (x) { return x.id === editingId; });
+      const a   = pendingPinA, b = pendingPinB;
+      document.getElementById('add-sheet-title').textContent = 'Edit Rule';
+      document.getElementById('add-repin').style.display = '';
+      document.getElementById('add-submit').textContent = 'Save Changes';
       document.getElementById('add-submit').disabled = false;
-      document.getElementById('add-submit').textContent = 'Save Rule';
+
+      if (a) {
+        document.getElementById('add-coords').textContent = b
+          ? 'New pins set'
+          : 'New start pin set';
+      } else if (r) {
+        const hasLine = r.lat2 != null && r.lng2 != null;
+        document.getElementById('add-coords').textContent = hasLine
+          ? 'Current: line segment'
+          : 'Current: ' + r.lat.toFixed(5) + ', ' + r.lng.toFixed(5);
+      }
 
       openSheet('add');
     }
 
     document.getElementById('add-close').addEventListener('click', function () {
+      editingId = null;
       clearPendingPins();
       closeAllSheets();
     });
@@ -1853,32 +1940,54 @@
       btn.textContent = 'Saving…';
 
       try {
-        const docRef = await db.collection('restrictions').add({
-          lat:          pendingPinA.lat,
-          lng:          pendingPinA.lng,
-          lat2:         pendingPinB ? pendingPinB.lat : null,
-          lng2:         pendingPinB ? pendingPinB.lng : null,
-          streetName:   street,
-          neighborhood: hood,
-          type:         type,
-          days:         days,
-          startTime:    start,
-          endTime:      end,
-          notes:        notes || null,
-          submittedBy:  currentUsername || null,
-          createdAt:    firebase.firestore.FieldValue.serverTimestamp(),
-          upvotes:      0
-        });
-
-        addMyRuleId(docRef.id);
-        closeAllSheets();
-        clearPendingPins();
-        showToast('Parking rule saved!');
+        if (editingId) {
+          const updateData = {
+            streetName:   street,
+            neighborhood: hood,
+            type:         type,
+            days:         days,
+            startTime:    start,
+            endTime:      end,
+            notes:        notes || null,
+          };
+          if (pendingPinA) {
+            updateData.lat  = pendingPinA.lat;
+            updateData.lng  = pendingPinA.lng;
+            updateData.lat2 = pendingPinB ? pendingPinB.lat : null;
+            updateData.lng2 = pendingPinB ? pendingPinB.lng : null;
+          }
+          await db.collection('restrictions').doc(editingId).update(updateData);
+          editingId = null;
+          clearPendingPins();
+          closeAllSheets();
+          showToast('Rule updated!');
+        } else {
+          const docRef = await db.collection('restrictions').add({
+            lat:          pendingPinA.lat,
+            lng:          pendingPinA.lng,
+            lat2:         pendingPinB ? pendingPinB.lat : null,
+            lng2:         pendingPinB ? pendingPinB.lng : null,
+            streetName:   street,
+            neighborhood: hood,
+            type:         type,
+            days:         days,
+            startTime:    start,
+            endTime:      end,
+            notes:        notes || null,
+            submittedBy:  currentUsername || null,
+            createdAt:    firebase.firestore.FieldValue.serverTimestamp(),
+            upvotes:      0
+          });
+          addMyRuleId(docRef.id);
+          clearPendingPins();
+          closeAllSheets();
+          showToast('Parking rule saved!');
+        }
       } catch (e) {
         console.error(e);
         showToast('Failed to save — try again');
         btn.disabled = false;
-        btn.textContent = 'Save Rule';
+        btn.textContent = editingId ? 'Save Changes' : 'Save Rule';
       }
     });
 
@@ -1973,7 +2082,15 @@
             '<div class="my-item-info">' + esc(TYPE_LABELS[r.type] || r.type) +
               ' · ' + esc(dayStr) + ' · ' + esc(timeStr) + '</div>' +
           '</div>' +
-          '<button class="my-item-delete" data-id="' + r.id + '">Delete</button>';
+          '<div class="my-item-actions">' +
+            '<button class="my-item-edit"   data-id="' + r.id + '">Edit</button>' +
+            '<button class="my-item-delete" data-id="' + r.id + '">Delete</button>' +
+          '</div>';
+
+        item.querySelector('.my-item-edit').addEventListener('click', function () {
+          closeAllSheets();
+          openEditSheet(r.id);
+        });
 
         item.querySelector('.my-item-delete').addEventListener('click', async function () {
           if (!confirm('Delete this rule?')) return;
@@ -2014,7 +2131,7 @@
     }
 
     document.getElementById('sheet-backdrop').addEventListener('click', function () {
-      if (sheetOpen === 'add') clearPendingPins();
+      if (sheetOpen === 'add') { editingId = null; clearPendingPins(); }
       closeAllSheets();
     });
 
