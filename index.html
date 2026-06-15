@@ -765,6 +765,51 @@
       text-align: center; margin-top: 16px; line-height: 1.5;
     }
 
+    /* ── COMMENTS ───────────────────────────────────────────────── */
+    #view-comments {
+      margin-top: 14px; padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .comments-title {
+      font-size: 11px; font-weight: 700; letter-spacing: .5px;
+      text-transform: uppercase; color: var(--text3); margin-bottom: 10px;
+    }
+    .comment-item {
+      display: flex; gap: 9px; margin-bottom: 12px; align-items: flex-start;
+    }
+    .comment-body { flex: 1; min-width: 0; }
+    .comment-header {
+      display: flex; align-items: baseline; gap: 5px; margin-bottom: 2px;
+    }
+    .comment-username { font-size: 13px; font-weight: 700; color: var(--text); }
+    .comment-time     { font-size: 11px; color: var(--text3); }
+    .comment-text {
+      font-size: 14px; color: var(--text2); line-height: 1.45; word-break: break-word;
+    }
+    .comment-text .mention { color: var(--accent); font-weight: 600; }
+    .no-comments-msg { font-size: 13px; color: var(--text3); padding: 4px 0 8px; }
+
+    #view-comment-bar {
+      display: flex; gap: 8px; align-items: center;
+      padding: 10px 20px; border-top: 1px solid var(--border);
+      background: var(--bg); flex-shrink: 0;
+    }
+    #comment-input {
+      flex: 1; padding: 9px 14px; font-size: 15px;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 22px; color: var(--text); outline: none;
+      font-family: var(--font);
+    }
+    #comment-input:focus { border-color: var(--accent); background: var(--bg); }
+    #comment-send {
+      padding: 9px 16px; background: var(--accent); color: #fff;
+      border: none; border-radius: 22px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      font-family: var(--font); flex-shrink: 0;
+    }
+    #comment-send:active { opacity: 0.85; }
+    #comment-send:disabled { background: var(--border); color: var(--text3); cursor: default; }
+
     /* ── ALL-TIMES TOGGLE ────────────────────────────────────────── */
     #all-times-row {
       display: flex; align-items: center; gap: 10px;
@@ -847,6 +892,16 @@
       <p style="font-size:11px;color:var(--text3);margin-top:10px">
         Added by <span id="view-author"></span>
       </p>
+
+      <div id="view-comments">
+        <div class="comments-title">Comments</div>
+        <div id="comments-list"></div>
+      </div>
+    </div>
+
+    <div id="view-comment-bar">
+      <input id="comment-input" type="text" placeholder="Add a comment… use @username to reply" maxlength="280" autocomplete="off" />
+      <button id="comment-send">Post</button>
     </div>
   </div>
 
@@ -1173,6 +1228,7 @@
     let pendingPinStep  = 0;      // 0=none, 1=A placed, 2=both placed
     let viewingId       = null;
     let editingId       = null;   // non-null when editing an existing rule
+    let commentsListener = null;  // Firestore unsubscribe for comment thread
     let sheetOpen       = null;
 
     // Per-device tracking (for guests + upvotes)
@@ -1733,6 +1789,74 @@
       }
     }
 
+    // ── COMMENTS ────────────────────────────────────────────────────
+    function timeAgo(ts) {
+      if (!ts || !ts.toMillis) return '';
+      const sec = Math.floor((Date.now() - ts.toMillis()) / 1000);
+      if (sec < 60)    return 'just now';
+      if (sec < 3600)  return Math.floor(sec / 60) + 'm ago';
+      if (sec < 86400) return Math.floor(sec / 3600) + 'h ago';
+      return Math.floor(sec / 86400) + 'd ago';
+    }
+
+    function highlightMentions(escapedText) {
+      return escapedText.replace(/@([a-zA-Z0-9_]+)/g,
+        '<span class="mention">@$1</span>');
+    }
+
+    function renderComments(comments) {
+      const list = document.getElementById('comments-list');
+      if (!list) return;
+      if (!comments.length) {
+        list.innerHTML = '<p class="no-comments-msg">Be the first to comment</p>';
+        return;
+      }
+      list.innerHTML = '';
+      comments.forEach(function(c) {
+        const uname   = c.username || null;
+        const cache   = uname ? (avatarCache[uname] || {}) : {};
+        const color   = cache.color || (uname ? avatarColor(uname) : '#9ca3af');
+        const display = cache.emoji || (uname ? uname[0].toUpperCase() : '?');
+        const fsz     = cache.emoji ? '13px' : '10px';
+
+        const el = document.createElement('div');
+        el.className = 'comment-item';
+        el.innerHTML =
+          '<div class="avatar-circle" style="background:' + color + ';width:26px;height:26px;font-size:' + fsz + ';flex-shrink:0">' + esc(display) + '</div>' +
+          '<div class="comment-body">' +
+            '<div class="comment-header">' +
+              '<span class="comment-username">' + esc(uname || 'Anonymous') + '</span>' +
+              '<span class="comment-time">'     + timeAgo(c.createdAt)      + '</span>' +
+            '</div>' +
+            '<div class="comment-text">' + highlightMentions(esc(c.text)) + '</div>' +
+          '</div>';
+        list.appendChild(el);
+      });
+    }
+
+    function loadComments(ruleId) {
+      detachComments();
+      const list = document.getElementById('comments-list');
+      if (list) list.innerHTML = '<p class="no-comments-msg">Loading…</p>';
+
+      commentsListener = db.collection('restrictions').doc(ruleId)
+        .collection('comments')
+        .orderBy('createdAt', 'asc')
+        .onSnapshot(function(snap) {
+          const docs = [];
+          snap.forEach(function(d) { docs.push(Object.assign({ id: d.id }, d.data())); });
+          renderComments(docs);
+        }, function(err) {
+          console.error('Comments:', err);
+          const list = document.getElementById('comments-list');
+          if (list) list.innerHTML = '<p class="no-comments-msg">Could not load comments</p>';
+        });
+    }
+
+    function detachComments() {
+      if (commentsListener) { commentsListener(); commentsListener = null; }
+    }
+
     // ── VIEW SHEET ──────────────────────────────────────────────────
     function openViewSheet(id) {
       const r = restrictions.find(function (x) { return x.id === id; });
@@ -1787,6 +1911,7 @@
       }
 
       openSheet('view');
+      loadComments(id);
     }
 
     document.getElementById('view-close').addEventListener('click', closeAllSheets);
@@ -2107,6 +2232,38 @@
       });
     }
 
+    // ── COMMENT POST ────────────────────────────────────────────────
+    document.getElementById('comment-send').addEventListener('click', async function () {
+      const input = document.getElementById('comment-input');
+      const text  = input.value.trim();
+      if (!text || !viewingId) return;
+      const btn = this;
+      btn.disabled = true;
+      try {
+        const cache = currentUsername ? (avatarCache[currentUsername] || {}) : {};
+        await db.collection('restrictions').doc(viewingId)
+          .collection('comments').add({
+            text:         text,
+            username:     currentUsername || null,
+            avatar_emoji: cache.emoji || null,
+            avatar_color: cache.color || null,
+            createdAt:    firebase.firestore.FieldValue.serverTimestamp()
+          });
+        input.value = '';
+      } catch(e) {
+        showToast('Could not post comment');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('comment-input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById('comment-send').click();
+      }
+    });
+
     // ── SHEET HELPERS ────────────────────────────────────────────────
     function openSheet(name) {
       closeAllSheets(false);
@@ -2118,6 +2275,7 @@
     }
 
     function closeAllSheets(reEnable) {
+      if (sheetOpen === 'view') detachComments();
       if (reEnable !== false) {
         map.dragPan.enable();
         map.scrollZoom.enable();
