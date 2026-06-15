@@ -2099,8 +2099,9 @@
     document.getElementById('view-close').addEventListener('click', closeAllSheets);
 
     document.getElementById('view-edit').addEventListener('click', function () {
+      const id = viewingId;
       closeAllSheets();
-      openEditSheet(viewingId);
+      openEditSheet(id);
     });
 
     document.getElementById('add-repin').addEventListener('click', function () {
