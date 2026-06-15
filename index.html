@@ -1102,7 +1102,7 @@
         <div id="my-avatar-large" class="avatar-circle-large" aria-label="Edit avatar">?</div>
       </div>
       <div style="flex:1;min-width:0">
-        <div class="sheet-title" id="my-title">My Rules</div>
+        <div class="sheet-title" id="my-title">My rules</div>
         <div id="my-subtitle" class="sheet-subtitle"></div>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
@@ -2327,7 +2327,7 @@
       openSheet('my');
 
       // Update header
-      document.getElementById('my-title').textContent = currentUsername ? currentUsername + "'s Rules" : 'My Rules';
+      document.getElementById('my-title').textContent = currentUsername ? currentUsername + "'s rules" : 'My rules';
       document.getElementById('signout-btn').style.display = currentUsername ? '' : 'none';
 
       // Large avatar (logged-in only)
@@ -2424,6 +2424,13 @@
             '<button class="my-item-edit"   data-id="' + r.id + '">Edit</button>' +
             '<button class="my-item-delete" data-id="' + r.id + '">Delete</button>' +
           '</div>';
+
+        item.querySelector('.my-item-body').style.cursor = 'pointer';
+        item.querySelector('.my-item-body').addEventListener('click', function () {
+          closeAllSheets();
+          map.flyTo({ center: [r.lng, r.lat], zoom: Math.max(map.getZoom(), 16), duration: 700, essential: true });
+          setTimeout(function () { openViewSheet(r.id); }, 750);
+        });
 
         item.querySelector('.my-item-edit').addEventListener('click', function () {
           closeAllSheets();
