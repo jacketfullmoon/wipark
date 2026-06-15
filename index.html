@@ -870,7 +870,12 @@
       display: flex; align-items: baseline; gap: 5px; margin-bottom: 2px;
     }
     .comment-username { font-size: 13px; font-weight: 700; color: var(--text); }
-    .comment-time     { font-size: 11px; color: var(--text3); }
+    .comment-time     { font-size: 11px; color: var(--text3); flex: 1; }
+    .comment-delete-btn {
+      background: none; border: none; font-size: 11px; color: var(--text3);
+      cursor: pointer; padding: 0 2px; line-height: 1; font-family: var(--font);
+    }
+    .comment-delete-btn:active { color: #ef4444; }
     .comment-text {
       font-size: 14px; color: var(--text2); line-height: 1.45; word-break: break-word;
     }
@@ -1935,6 +1940,7 @@
         const fsz     = cache.emoji ? '13px' : '10px';
 
         const el = document.createElement('div');
+        const canDelete = uname && uname === currentUsername;
         el.className = 'comment-item';
         el.innerHTML =
           '<div class="avatar-circle" style="background:' + color + ';width:26px;height:26px;font-size:' + fsz + ';flex-shrink:0">' + esc(display) + '</div>' +
@@ -1942,9 +1948,19 @@
             '<div class="comment-header">' +
               '<span class="comment-username">' + esc(uname || 'Anonymous') + '</span>' +
               '<span class="comment-time">'     + timeAgo(c.createdAt)      + '</span>' +
+              (canDelete ? '<button class="comment-delete-btn" title="Delete comment">Delete</button>' : '') +
             '</div>' +
             '<div class="comment-text">' + highlightMentions(esc(c.text)) + '</div>' +
           '</div>';
+        if (canDelete) {
+          el.querySelector('.comment-delete-btn').addEventListener('click', async function () {
+            if (!viewingId) return;
+            try {
+              await db.collection('restrictions').doc(viewingId)
+                .collection('comments').doc(c.id).delete();
+            } catch(e) { showToast('Could not delete comment'); }
+          });
+        }
         list.appendChild(el);
       });
     }
