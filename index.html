@@ -230,6 +230,22 @@
     }
     .search-result-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
     .search-no-results { font-size: 13px; color: var(--text3); padding: 12px 14px; text-align: center; }
+    #hood-radius-row {
+      display: none; align-items: center; gap: 8px;
+      margin-top: 8px;
+    }
+    #hood-radius-row.show { display: flex; }
+    #hood-radius-label { font-size: 12px; font-weight: 600; color: var(--text2); }
+    #hood-radius-select {
+      flex: 1; font-family: var(--font); font-size: 13px;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 8px; padding: 6px 8px; color: var(--text);
+    }
+    .search-result-type-tag {
+      font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+      padding: 1px 6px; border-radius: 8px; flex-shrink: 0;
+      background: var(--surface2); color: var(--text3);
+    }
 
     #btn-add {
       background: var(--accent);
@@ -1170,6 +1186,25 @@
         <button class="search-clear-btn" id="search-clear-users" aria-label="Clear">×</button>
       </div>
       <div class="search-results-list" id="search-results-users"></div>
+    </div>
+    <div>
+      <div class="search-section-label">Search by Neighborhood</div>
+      <div class="search-input-row">
+        <input id="search-input-hood" type="search" placeholder="e.g. Silver Lake" autocomplete="off" />
+        <button class="search-clear-btn" id="search-clear-hood" aria-label="Clear">×</button>
+      </div>
+      <div class="search-results-list" id="search-results-hood-suggest"></div>
+      <div id="hood-radius-row">
+        <span id="hood-radius-label">Within</span>
+        <select id="hood-radius-select" class="form-select">
+          <option value="0.25">0.25 mi</option>
+          <option value="0.5">0.5 mi</option>
+          <option value="1" selected>1 mi</option>
+          <option value="2">2 mi</option>
+          <option value="5">5 mi</option>
+        </select>
+      </div>
+      <div class="search-results-list" id="search-results-hood"></div>
     </div>
   </div>
 
@@ -4055,6 +4090,14 @@
       const inputUsers  = document.getElementById('search-input-users');
       const clearUsers  = document.getElementById('search-clear-users');
       const resultsUsers = document.getElementById('search-results-users');
+      const inputHood        = document.getElementById('search-input-hood');
+      const clearHood         = document.getElementById('search-clear-hood');
+      const resultsHoodSuggest = document.getElementById('search-results-hood-suggest');
+      const radiusRow         = document.getElementById('hood-radius-row');
+      const radiusSelect      = document.getElementById('hood-radius-select');
+      const resultsHood       = document.getElementById('search-results-hood');
+      let selectedHoodCenter = null;
+      let selectedHoodName   = null;
       let debounceUsers = null;
       let searchIsOpen  = false;
 
@@ -4074,6 +4117,7 @@
         resultsPins.innerHTML = ''; resultsPins.classList.remove('open');
         resultsUsers.innerHTML = ''; resultsUsers.classList.remove('open');
         clearTimeout(debounceUsers);
+        clearHoodSearch();
       }
 
       searchBtn.addEventListener('click', function () {
@@ -4195,6 +4239,170 @@
           }
         }, 300);
       });
+
+      // ── Neighborhood + radius search (local, combines rules + listings)
+      function pinLatLng(r) {
+        if (r.lat2 != null && r.lng2 != null) return { lat: (r.lat + r.lat2) / 2, lng: (r.lng + r.lng2) / 2 };
+        return { lat: r.lat, lng: r.lng };
+      }
+
+      function getAllNeighborhoods() {
+        const byKey = {};
+        restrictions.forEach(function (r) {
+          if (!r.neighborhood) return;
+          const key = r.neighborhood.trim().toLowerCase();
+          if (key && !byKey[key]) byKey[key] = r.neighborhood.trim();
+        });
+        listings.forEach(function (l) {
+          if (!l.neighborhood) return;
+          const key = l.neighborhood.trim().toLowerCase();
+          if (key && !byKey[key]) byKey[key] = l.neighborhood.trim();
+        });
+        return Object.keys(byKey).map(function (k) { return byKey[k]; });
+      }
+
+      function neighborhoodCenter(name) {
+        const key = name.trim().toLowerCase();
+        const pts = [];
+        restrictions.forEach(function (r) {
+          if (r.neighborhood && r.neighborhood.trim().toLowerCase() === key) pts.push(pinLatLng(r));
+        });
+        listings.forEach(function (l) {
+          if (l.neighborhood && l.neighborhood.trim().toLowerCase() === key) pts.push({ lat: l.lat, lng: l.lng });
+        });
+        if (!pts.length) return null;
+        return {
+          lat: pts.reduce(function (s, p) { return s + p.lat; }, 0) / pts.length,
+          lng: pts.reduce(function (s, p) { return s + p.lng; }, 0) / pts.length
+        };
+      }
+
+      function radiusToZoom(radiusMiles) {
+        if (radiusMiles <= 0.25) return 16;
+        if (radiusMiles <= 0.5)  return 15;
+        if (radiusMiles <= 1)    return 14;
+        if (radiusMiles <= 2)    return 13;
+        return 12;
+      }
+
+      function closeHoodSuggestions() {
+        resultsHoodSuggest.innerHTML = '';
+        resultsHoodSuggest.classList.remove('open');
+      }
+
+      function clearHoodSearch() {
+        inputHood.value = '';
+        selectedHoodCenter = null;
+        selectedHoodName = null;
+        closeHoodSuggestions();
+        radiusRow.classList.remove('show');
+        resultsHood.innerHTML = '';
+        resultsHood.classList.remove('open');
+      }
+
+      function runHoodRadiusSearch() {
+        if (!selectedHoodCenter) return;
+        const radius = parseFloat(radiusSelect.value);
+        const items = [];
+        restrictions.forEach(function (r) {
+          const p = pinLatLng(r);
+          const d = distanceMiles(selectedHoodCenter.lat, selectedHoodCenter.lng, p.lat, p.lng);
+          if (d <= radius) items.push({ kind: 'rule', data: r, dist: d, lat: p.lat, lng: p.lng });
+        });
+        listings.forEach(function (l) {
+          const d = distanceMiles(selectedHoodCenter.lat, selectedHoodCenter.lng, l.lat, l.lng);
+          if (d <= radius) items.push({ kind: 'listing', data: l, dist: d, lat: l.lat, lng: l.lng });
+        });
+        items.sort(function (a, b) { return a.dist - b.dist; });
+
+        map.flyTo({ center: [selectedHoodCenter.lng, selectedHoodCenter.lat], zoom: radiusToZoom(radius), duration: 700, essential: true });
+
+        resultsHood.innerHTML = '';
+        if (!items.length) {
+          resultsHood.innerHTML = '<p class="search-no-results">Nothing within ' + radius + ' mi of ' + esc(selectedHoodName) + '</p>';
+          resultsHood.classList.add('open');
+          return;
+        }
+        items.slice(0, 30).forEach(function (it) {
+          const item = document.createElement('div');
+          item.className = 'search-result-item';
+          const color = it.kind === 'rule'
+            ? (TYPE_COLORS[it.data.type] || '#999')
+            : (LISTING_COLORS[it.data.spotType] || '#999');
+          const name  = it.kind === 'rule' ? it.data.streetName : it.data.title;
+          const label = it.kind === 'rule' ? (TYPE_LABELS[it.data.type] || it.data.type) : (LISTING_LABELS[it.data.spotType] || it.data.spotType);
+          const tag   = it.kind === 'rule' ? 'Rule' : 'Rent';
+          item.innerHTML =
+            '<div style="width:10px;height:10px;border-radius:50%;background:' + color + ';flex-shrink:0"></div>' +
+            '<div style="flex:1;min-width:0">' +
+              '<div class="search-result-name">' + esc(name) + '</div>' +
+              '<div class="search-result-sub">' + esc(label) + ' · ' + it.dist.toFixed(1) + ' mi</div>' +
+            '</div>' +
+            '<span class="search-result-type-tag">' + tag + '</span>';
+          item.addEventListener('pointerdown', function (e) { e.preventDefault(); });
+          item.addEventListener('click', function () {
+            closeSearch();
+            closeAllSheets();
+            map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 16), duration: 700, essential: true });
+            if (it.kind === 'rule') {
+              setTimeout(function () { openViewSheet(it.data.id); }, 750);
+            } else {
+              setTimeout(function () { openListingViewSheet(it.data.id); }, 750);
+            }
+          });
+          resultsHood.appendChild(item);
+        });
+        resultsHood.classList.add('open');
+      }
+
+      inputHood.addEventListener('input', function () {
+        selectedHoodCenter = null;
+        radiusRow.classList.remove('show');
+        resultsHood.innerHTML = ''; resultsHood.classList.remove('open');
+        const q = this.value.trim().toLowerCase();
+        if (!q.length) { closeHoodSuggestions(); return; }
+        const names = getAllNeighborhoods().filter(function (n) { return n.toLowerCase().includes(q); }).slice(0, 8);
+        resultsHoodSuggest.innerHTML = '';
+        if (!names.length) {
+          resultsHoodSuggest.innerHTML = '<p class="search-no-results">No neighborhoods found</p>';
+          resultsHoodSuggest.classList.add('open');
+          return;
+        }
+        names.forEach(function (name) {
+          const key = name.toLowerCase();
+          const count = restrictions.filter(function (r) { return r.neighborhood && r.neighborhood.trim().toLowerCase() === key; }).length +
+                        listings.filter(function (l) { return l.neighborhood && l.neighborhood.trim().toLowerCase() === key; }).length;
+          const item = document.createElement('div');
+          item.className = 'search-result-item';
+          item.innerHTML =
+            '<div style="flex:1;min-width:0">' +
+              '<div class="search-result-name">' + esc(name) + '</div>' +
+              '<div class="search-result-sub">' + count + ' pin' + (count !== 1 ? 's' : '') + '</div>' +
+            '</div>';
+          item.addEventListener('pointerdown', function (e) { e.preventDefault(); });
+          item.addEventListener('click', function () {
+            inputHood.value = name;
+            selectedHoodName = name;
+            selectedHoodCenter = neighborhoodCenter(name);
+            closeHoodSuggestions();
+            if (selectedHoodCenter) {
+              radiusRow.classList.add('show');
+              runHoodRadiusSearch();
+            }
+          });
+          resultsHoodSuggest.appendChild(item);
+        });
+        resultsHoodSuggest.classList.add('open');
+      });
+
+      radiusSelect.addEventListener('change', function () {
+        if (selectedHoodCenter) runHoodRadiusSearch();
+      });
+
+      clearHood.addEventListener('click', function () {
+        clearHoodSearch();
+        inputHood.focus();
+      });
     })();
 
     // ── FILTER ──────────────────────────────────────────────────────
@@ -4305,6 +4513,15 @@
     });
 
     // ── HELPERS ──────────────────────────────────────────────────────
+    function distanceMiles(lat1, lng1, lat2, lng2) {
+      const R = 3958.8; // Earth radius in miles
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
     function fmt12(time) {
       if (!time) return '';
       const parts = time.split(':');
