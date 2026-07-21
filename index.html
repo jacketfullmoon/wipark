@@ -56,6 +56,10 @@
       --c-curb-white:      #6b7280;
       --c-curb-green:      #166534;
       --c-curb-blue:       #1e40af;
+
+      /* Rental listing colours */
+      --c-driveway:        #0d9488;
+      --c-lot:              #7c3aed;
     }
 
     *, *::before, *::after {
@@ -124,13 +128,25 @@
       font-size: 12px;
       color: #9ca3af;
       flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     #topbar-right {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       flex-shrink: 0;
+    }
+
+    @media (max-width: 400px) {
+      #topbar { padding-left: 12px; padding-right: 8px; gap: 6px; }
+      #topbar-right { gap: 4px; }
+      #app-name { font-size: 17px; }
+      #topbar-divider { display: none; }
+      .topbar-btn { padding: 7px 9px; font-size: 12px; }
     }
 
     .topbar-btn {
@@ -919,26 +935,26 @@
     .comment-text .mention { color: var(--accent); font-weight: 600; }
     .no-comments-msg { font-size: 13px; color: var(--text3); padding: 4px 0 8px; }
 
-    #view-comment-bar {
+    #view-comment-bar, #thread-comment-bar {
       display: flex; gap: 8px; align-items: center;
       padding: 10px 20px; border-top: 1px solid var(--border);
       background: var(--bg); flex-shrink: 0;
     }
-    #comment-input {
+    #comment-input, #thread-input {
       flex: 1; padding: 9px 14px; font-size: 15px;
       background: var(--surface); border: 1.5px solid var(--border);
       border-radius: 22px; color: var(--text); outline: none;
       font-family: var(--font);
     }
-    #comment-input:focus { border-color: var(--accent); background: var(--bg); }
-    #comment-send {
+    #comment-input:focus, #thread-input:focus { border-color: var(--accent); background: var(--bg); }
+    #comment-send, #thread-send {
       padding: 9px 16px; background: var(--accent); color: #fff;
       border: none; border-radius: 22px;
       font-size: 14px; font-weight: 600; cursor: pointer;
       font-family: var(--font); flex-shrink: 0;
     }
-    #comment-send:active { opacity: 0.85; }
-    #comment-send:disabled { background: var(--border); color: var(--text3); cursor: default; }
+    #comment-send:active, #thread-send:active { opacity: 0.85; }
+    #comment-send:disabled, #thread-send:disabled { background: var(--border); color: var(--text3); cursor: default; }
 
     /* ── ALL-TIMES TOGGLE ────────────────────────────────────────── */
     #all-times-row {
@@ -961,6 +977,153 @@
     #all-times-toggle.on { background: var(--accent); }
     #all-times-toggle.on::after { transform: translateX(18px); }
     #all-times-label { font-size: 13px; font-weight: 600; color: var(--text2); }
+
+    /* ── GENERIC TABS (auth modal + my-sheet) ─────────────────────── */
+    .tab-row, #auth-tabs {
+      display: flex; gap: 0;
+      background: var(--surface); border-radius: 10px;
+      padding: 3px; margin-bottom: 18px;
+    }
+    .tab-btn, .auth-tab {
+      flex: 1; padding: 8px; border: none; border-radius: 8px;
+      background: transparent; color: var(--text2);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      font-family: var(--font); transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .tab-btn.active, .auth-tab.active {
+      background: var(--bg); color: var(--text);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+
+    /* ── INBOX BUTTON ─────────────────────────────────────────────── */
+    #inbox-btn {
+      background: rgba(255,255,255,0.12);
+      border: none;
+      color: #e5e7eb;
+      width: 34px; height: 34px;
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0; position: relative;
+      transition: background 0.15s;
+    }
+    #inbox-btn:active { background: rgba(255,255,255,0.22); }
+    #inbox-badge {
+      position: absolute; top: -3px; right: -3px;
+      background: #e53935; color: #fff;
+      border-radius: 10px; padding: 0 4px;
+      font-size: 10px; font-weight: 700;
+      min-width: 16px; height: 16px;
+      line-height: 16px; text-align: center;
+      display: none; pointer-events: none;
+    }
+
+    /* ── ADD-MODE MENU ────────────────────────────────────────────── */
+    #add-menu-wrap { position: relative; }
+    #add-menu {
+      display: none; position: absolute; top: calc(100% + 6px); right: 0;
+      background: var(--bg); border: 1.5px solid var(--border);
+      border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.16);
+      z-index: 500; overflow: hidden; min-width: 190px;
+    }
+    #add-menu.open { display: block; }
+    .add-menu-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px; cursor: pointer; transition: background .1s;
+      font-size: 14px; color: var(--text); white-space: nowrap;
+    }
+    .add-menu-item:active { background: var(--surface); }
+    .add-menu-item + .add-menu-item { border-top: 1px solid var(--border); }
+
+    /* ── LISTING SPOT-TYPE BADGE ─────────────────────────────────── */
+    .spot-badge-driveway { background: var(--c-driveway); }
+    .spot-badge-lot      { background: var(--c-lot); }
+
+    /* ── BOOKING ACTION BUTTONS ──────────────────────────────────── */
+    .btn-accept, .btn-decline, .btn-paid, .btn-cancel-booking, .btn-pause, .btn-complete {
+      background: none; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      padding: 5px 10px; font-family: var(--font);
+    }
+    .btn-accept  { border-color: #86efac; color: #16a34a; }
+    .btn-decline, .btn-cancel-booking { border-color: #fca5a5; color: #ef4444; }
+    .btn-paid, .btn-complete { border-color: var(--accent); color: var(--accent); }
+    .btn-pause { color: var(--text2); }
+    .btn-accept:active, .btn-decline:active, .btn-paid:active,
+    .btn-cancel-booking:active, .btn-pause:active, .btn-complete:active { opacity: .7; }
+
+    .status-pill {
+      display: inline-flex; align-items: center;
+      padding: 2px 9px; border-radius: 20px;
+      font-size: 11px; font-weight: 700;
+      margin-left: 6px;
+    }
+    .status-pill.pending   { background: #fef3c7; color: #92400e; }
+    .status-pill.accepted  { background: #dcfce7; color: #166534; }
+    .status-pill.declined,
+    .status-pill.cancelled { background: #fee2e2; color: #991b1b; }
+    .status-pill.completed { background: #e0e7ff; color: #3730a3; }
+    .status-pill.paid      { background: #dbeafe; color: #1e40af; }
+
+    .booking-card-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
+    /* ── INBOX LIST ───────────────────────────────────────────────── */
+    .inbox-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 4px; cursor: pointer;
+      border-bottom: 1px solid var(--border);
+    }
+    .inbox-row:last-child { border-bottom: none; }
+    .inbox-row:active { background: var(--surface); }
+    .inbox-row-body { flex: 1; min-width: 0; }
+    .inbox-row-name { font-size: 14px; font-weight: 700; color: var(--text); }
+    .inbox-row-preview {
+      font-size: 12px; color: var(--text3); margin-top: 1px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .inbox-row-time { font-size: 11px; color: var(--text3); flex-shrink: 0; }
+    .inbox-row-dot {
+      width: 9px; height: 9px; border-radius: 50%; background: #2563eb;
+      flex-shrink: 0; margin-left: 4px;
+    }
+
+    /* ── THREAD / CHAT ────────────────────────────────────────────── */
+    #thread-sheet .sheet-body { padding: 10px 14px 16px; }
+    .msg-row { display: flex; margin-bottom: 8px; }
+    .msg-row.mine { justify-content: flex-end; }
+    .msg-row.theirs { justify-content: flex-start; }
+    .msg-bubble {
+      max-width: 78%; padding: 9px 13px; border-radius: 16px;
+      font-size: 14px; line-height: 1.4; word-break: break-word;
+    }
+    .msg-row.mine .msg-bubble   { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+    .msg-row.theirs .msg-bubble { background: var(--surface); color: var(--text); border-bottom-left-radius: 4px; }
+    .msg-system {
+      text-align: center; margin: 10px 0;
+      font-size: 12px; color: var(--text2);
+      background: var(--surface); border-radius: 14px;
+      padding: 6px 14px; display: inline-block;
+    }
+    .msg-system-row { display: flex; justify-content: center; }
+    #thread-header-info { display: flex; align-items: center; gap: 10px; }
+
+    /* ── VENMO HANDLE FIELD ──────────────────────────────────────── */
+    #venmo-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 10px; font-size: 13px; color: var(--text2);
+    }
+    #venmo-input {
+      flex: 1; padding: 8px 10px; font-size: 13px;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 8px; color: var(--text); outline: none;
+      font-family: var(--font);
+    }
+    #venmo-input:focus { border-color: var(--accent); }
+    #venmo-save-btn {
+      padding: 8px 12px; background: var(--accent); color: #fff;
+      border: none; border-radius: 8px; font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: var(--font); flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -976,8 +1139,17 @@
       <button id="search-btn" aria-label="Search">
         <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="2"/><line x1="11.7" y1="11.7" x2="16" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
+      <button id="inbox-btn" aria-label="Inbox">
+        💬<span id="inbox-badge"></span>
+      </button>
       <button class="topbar-btn" id="btn-laws">LA Laws</button>
-      <button class="topbar-btn" id="btn-add">+ Add Rule</button>
+      <div id="add-menu-wrap">
+        <button class="topbar-btn" id="btn-add">+ Add</button>
+        <div id="add-menu">
+          <div class="add-menu-item" id="add-menu-rule">📍 Parking Rule</div>
+          <div class="add-menu-item" id="add-menu-listing">🅿️ Rent My Spot</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1158,7 +1330,189 @@
         <button class="sheet-close" id="my-close">×</button>
       </div>
     </div>
-    <div class="sheet-body" id="my-list"></div>
+    <div class="sheet-body">
+      <div id="venmo-row" style="display:none">
+        <span>💳 Venmo</span>
+        <input id="venmo-input" type="text" placeholder="@your-venmo" autocomplete="off" />
+        <button id="venmo-save-btn">Save</button>
+      </div>
+      <div id="my-tabs" class="tab-row" style="display:none">
+        <button class="tab-btn active" data-my-tab="rules">Rules</button>
+        <button class="tab-btn" data-my-tab="listings">My Spots</button>
+        <button class="tab-btn" data-my-tab="bookings">My Rentals</button>
+      </div>
+      <div id="my-list"></div>
+      <div id="my-listings-list" style="display:none"></div>
+      <div id="my-bookings-list" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ── LISTING VIEW SHEET ──────────────────────────── -->
+  <div class="sheet" id="listing-view-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div id="lv-title" class="sheet-title"></div>
+      <div id="lv-hood" class="sheet-subtitle"></div>
+      <button class="sheet-close" id="lv-close">×</button>
+    </div>
+    <div class="sheet-body">
+      <span id="lv-badge" class="type-badge"></span>
+
+      <div class="detail-row">
+        <span class="detail-label">Price</span>
+        <span id="lv-price"></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Days</span>
+        <span id="lv-days"></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Hours</span>
+        <span id="lv-hours"></span>
+      </div>
+      <div class="detail-row" id="lv-desc-row">
+        <span class="detail-label">About</span>
+        <span id="lv-desc"></span>
+      </div>
+
+      <p style="font-size:11px;color:var(--text3);margin-top:10px">
+        Listed by <span id="lv-owner"></span>
+      </p>
+
+      <div id="lv-owner-actions" style="display:none;gap:8px;margin-top:12px">
+        <button class="btn-pause" id="lv-pause-btn">Pause listing</button>
+        <button class="btn-decline" id="lv-delete-btn">Delete listing</button>
+      </div>
+
+      <div id="lv-booking-form" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <div class="section-title" style="margin-top:0">Request to book</div>
+        <div class="form-group">
+          <label class="form-label">Date *</label>
+          <input class="form-input" id="lv-date" type="date" />
+        </div>
+        <div class="time-row" id="lv-time-row">
+          <div class="form-group">
+            <label class="form-label">Start time *</label>
+            <input class="form-input" id="lv-start" type="time" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">End time *</label>
+            <input class="form-input" id="lv-end" type="time" />
+          </div>
+        </div>
+        <div id="lv-total" style="font-size:14px;font-weight:700;color:var(--text);margin-top:10px"></div>
+        <button class="btn-primary" id="lv-book-btn">Request to Book</button>
+        <button class="btn-primary" id="lv-message-btn" style="background:var(--surface2);color:var(--text);margin-top:10px">Message Owner</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LISTING ADD SHEET ───────────────────────────── -->
+  <div class="sheet" id="listing-add-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title" id="la-sheet-title">Rent My Spot</div>
+      <div class="sheet-subtitle" id="la-coords"></div>
+      <button class="sheet-close" id="la-close">×</button>
+    </div>
+    <div class="sheet-body">
+
+      <div class="form-group">
+        <label class="form-label">Title *</label>
+        <input class="form-input" id="la-title" type="text" placeholder="e.g. Covered driveway near USC" autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Neighborhood *</label>
+        <input class="form-input" id="la-hood" type="text" placeholder="e.g. Silver Lake" autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Spot type *</label>
+        <div class="day-pills">
+          <button type="button" class="day-pill selected" id="la-type-driveway" data-spot-type="driveway">Driveway</button>
+          <button type="button" class="day-pill" id="la-type-lot" data-spot-type="lot">Private Lot</button>
+        </div>
+      </div>
+
+      <div class="time-row">
+        <div class="form-group">
+          <label class="form-label">Price ($) *</label>
+          <input class="form-input" id="la-price" type="number" min="0" step="0.5" placeholder="10" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Per *</label>
+          <select class="form-select" id="la-price-unit">
+            <option value="hour">Hour</option>
+            <option value="day">Day</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Available days *</label>
+        <div class="day-pills">
+          <button class="day-pill" data-la-day="monday">Mon</button>
+          <button class="day-pill" data-la-day="tuesday">Tue</button>
+          <button class="day-pill" data-la-day="wednesday">Wed</button>
+          <button class="day-pill" data-la-day="thursday">Thu</button>
+          <button class="day-pill" data-la-day="friday">Fri</button>
+          <button class="day-pill" data-la-day="saturday">Sat</button>
+          <button class="day-pill" data-la-day="sunday">Sun</button>
+        </div>
+      </div>
+
+      <div class="time-row">
+        <div class="form-group">
+          <label class="form-label">Available from *</label>
+          <input class="form-input" id="la-start" type="time" value="08:00" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Available until *</label>
+          <input class="form-input" id="la-end" type="time" value="18:00" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Description <span style="font-weight:400;color:var(--text3)">(optional)</span></label>
+        <textarea class="form-textarea" id="la-desc" placeholder="e.g. Fits 1 sedan, gate code shared after booking" maxlength="280"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Venmo handle <span style="font-weight:400;color:var(--text3)">(optional)</span></label>
+        <input class="form-input" id="la-venmo" type="text" placeholder="@your-venmo" autocomplete="off" />
+      </div>
+
+      <button class="btn-primary" id="la-submit">Save Listing</button>
+
+    </div>
+  </div>
+
+  <!-- ── INBOX SHEET ─────────────────────────────────── -->
+  <div class="sheet" id="inbox-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">Inbox</div>
+      <button class="sheet-close" id="inbox-close">×</button>
+    </div>
+    <div class="sheet-body" id="inbox-list"></div>
+  </div>
+
+  <!-- ── THREAD SHEET ────────────────────────────────── -->
+  <div class="sheet" id="thread-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div id="thread-header-info">
+        <div id="thread-avatar" class="avatar-circle" style="width:30px;height:30px">?</div>
+        <div id="thread-username" class="sheet-title" style="padding-right:0"></div>
+      </div>
+      <button class="sheet-close" id="thread-close">×</button>
+    </div>
+    <div class="sheet-body" id="thread-messages"></div>
+    <div id="thread-comment-bar">
+      <input id="thread-input" type="text" placeholder="Message…" maxlength="500" autocomplete="off" />
+      <button id="thread-send">Send</button>
+    </div>
   </div>
 
   <!-- ── USERNAME MODAL ────────────────────────────────── -->
@@ -1214,6 +1568,9 @@
     <div class="legend-row" data-type="curb_white"><div class="legend-dot" style="background:var(--c-curb-white)"></div>   <span class="legend-label">White Curb</span></div>
     <div class="legend-row" data-type="curb_green"><div class="legend-dot" style="background:var(--c-curb-green)"></div>   <span class="legend-label">Green Curb</span></div>
     <div class="legend-row" data-type="curb_blue"><div class="legend-dot" style="background:var(--c-curb-blue)"></div>     <span class="legend-label">Blue Curb</span></div>
+    <div class="legend-title" style="margin-top:10px">Rental Spots</div>
+    <div class="legend-row" data-listing-type="driveway"><div class="legend-dot" style="background:var(--c-driveway)"></div> <span class="legend-label">Driveway</span></div>
+    <div class="legend-row" data-listing-type="lot"><div class="legend-dot" style="background:var(--c-lot)"></div>          <span class="legend-label">Private Lot</span></div>
   </div>
 
   <!-- ── LA LAWS MODAL ─────────────────────────────────── -->
@@ -1376,6 +1733,9 @@
       friday:'Fri', saturday:'Sat', sunday:'Sun'
     };
 
+    const LISTING_COLORS = { driveway: '#0d9488', lot: '#7c3aed' };
+    const LISTING_LABELS = { driveway: 'Driveway', lot: 'Private Lot' };
+
     // ── STATE ───────────────────────────────────────────────────────
     let map, db, auth;
     let currentUser     = null;
@@ -1383,6 +1743,7 @@
     let avatarCache     = {};     // { username: { emoji, color } }
     let restrictions    = [];
     let addMode         = false;
+    let addModeType      = 'rule'; // 'rule' | 'listing'
     let pendingMarkerA  = null;
     let pendingMarkerB  = null;
     let pendingPinA     = null;   // { lat, lng } start of restriction
@@ -1395,6 +1756,19 @@
     let sheetOpen       = null;
     let viewingUser     = null;   // non-null when my-sheet is showing another user's profile
     let activeTypes     = new Set(Object.keys(TYPE_LABELS));
+
+    // Marketplace state
+    let listings           = [];
+    let activeListingTypes = new Set(Object.keys(LISTING_LABELS));
+    let viewingListingId   = null;
+    let editingListingId   = null;
+    let pendingListingPin  = null;   // { lat, lng }
+    let pendingListingMarker = null;
+    let inboxListener       = null;  // Firestore unsubscribe for inbox unread badge
+    let threadListener      = null;  // Firestore unsubscribe for open thread messages
+    let activeThreadUser    = null;  // other participant's username, when thread sheet open
+    let activeConversationId = null;
+    let myTab               = 'rules'; // 'rules' | 'listings' | 'bookings'
 
     // Per-device tracking (for guests + upvotes)
     function getMyRuleIds() {
@@ -1589,9 +1963,11 @@
           updateProfileBtn();
           document.getElementById('signout-btn').style.display = currentUsername ? '' : 'none';
           attachNotificationsListener();
+          attachInboxListener();
         } else {
           currentUsername = null;
           detachNotificationsListener();
+          detachInboxListener();
           modal.classList.add('open');
           setTimeout(function() { usernameIn.focus(); }, 300);
         }
@@ -1708,6 +2084,7 @@
       geolocate.trigger();
       setupMapLayers();
       loadRestrictions();
+      loadListings();
     });
 
     // ── MAP LAYERS ──────────────────────────────────────────────────
@@ -1800,6 +2177,34 @@
         }
       });
 
+      // Rental listing pins
+      map.addSource('listings', {
+        type: 'geojson',
+        data: buildListingsGeoJSON()
+      });
+      map.addLayer({
+        id: 'listing-border',
+        type: 'circle',
+        source: 'listings',
+        paint: { 'circle-radius': 8, 'circle-color': '#ffffff', 'circle-opacity': 0.9 }
+      });
+      map.addLayer({
+        id: 'listing-fill',
+        type: 'circle',
+        source: 'listings',
+        paint: {
+          'circle-radius': 6,
+          'circle-color': ['match', ['get', 'spotType'], 'driveway', LISTING_COLORS.driveway, 'lot', LISTING_COLORS.lot, '#999999'],
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': '#ffffff'
+        }
+      });
+      // Note: a 'symbol' layer with an emoji text-field was tried here for a
+      // per-type glyph on the pin, but this map style's glyph set doesn't cover
+      // emoji codepoints — the failed glyph fetch stalls tile processing for
+      // every layer sharing the source (border+fill included). Colour alone
+      // (border/fill above) is enough to distinguish listing types.
+
       map.on('click', 'r-fill', function (e) {
         if (addMode) return;
         const props = e.features[0].properties;
@@ -1814,6 +2219,13 @@
         e.originalEvent.stopPropagation();
       });
 
+      map.on('click', 'listing-fill', function (e) {
+        if (addMode) return;
+        const props = e.features[0].properties;
+        openListingViewSheet(props.id);
+        e.originalEvent.stopPropagation();
+      });
+
       // Map click → add mode (drop pins)
       map.on('click', function (e) {
         if (!addMode) return;
@@ -1825,6 +2237,8 @@
       map.on('mouseleave', 'r-fill', () => { map.getCanvas().style.cursor = addMode ? 'crosshair' : ''; });
       map.on('mouseenter', 'r-line', () => { map.getCanvas().style.cursor = 'pointer'; });
       map.on('mouseleave', 'r-line', () => { map.getCanvas().style.cursor = addMode ? 'crosshair' : ''; });
+      map.on('mouseenter', 'listing-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'listing-fill', () => { map.getCanvas().style.cursor = addMode ? 'crosshair' : ''; });
     }
 
     function buildGeoJSON() {
@@ -1861,6 +2275,27 @@
         restrictions.length + ' rule' + (restrictions.length !== 1 ? 's' : '') + ' mapped';
     }
 
+    function buildListingsGeoJSON() {
+      const features = [];
+      listings.forEach(function (l) {
+        features.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [l.lng, l.lat] },
+          properties: {
+            id:        l.id,
+            spotType:  l.spotType,
+            title:     l.title
+          }
+        });
+      });
+      return { type: 'FeatureCollection', features: features };
+    }
+
+    function refreshListingsSource() {
+      if (!map.getSource('listings')) return;
+      map.getSource('listings').setData(buildListingsGeoJSON());
+    }
+
     // ── FIRESTORE ───────────────────────────────────────────────────
     function loadRestrictions() {
       db.collection('restrictions')
@@ -1877,32 +2312,72 @@
         });
     }
 
+    function loadListings() {
+      db.collection('listings')
+        .where('status', '==', 'active')
+        .onSnapshot(function (snap) {
+          listings = [];
+          snap.forEach(function (doc) {
+            listings.push({ id: doc.id, ...doc.data() });
+          });
+          refreshListingsSource();
+        }, function (err) {
+          console.error('Firestore error (listings):', err);
+        });
+    }
+
     // ── ADD MODE ────────────────────────────────────────────────────
-    document.getElementById('btn-add').addEventListener('click', function () {
-      toggleAddMode();
+    document.getElementById('btn-add').addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (addMode) { toggleAddMode(); return; }
+      document.getElementById('add-menu').classList.toggle('open');
     });
+    document.addEventListener('pointerdown', function (e) {
+      const wrap = document.getElementById('add-menu-wrap');
+      if (!wrap.contains(e.target)) document.getElementById('add-menu').classList.remove('open');
+    });
+    document.getElementById('add-menu-rule').addEventListener('click', function () {
+      document.getElementById('add-menu').classList.remove('open');
+      enterAddMode('rule');
+    });
+    document.getElementById('add-menu-listing').addEventListener('click', function () {
+      document.getElementById('add-menu').classList.remove('open');
+      if (!currentUsername) {
+        document.getElementById('username-modal').classList.add('open');
+        showToast('Create an account to list a spot');
+        return;
+      }
+      enterAddMode('listing');
+    });
+
+    function enterAddMode(type) {
+      addModeType = type;
+      addMode = true;
+      pendingPinStep = 0;
+      const btn  = document.getElementById('btn-add');
+      const hint = document.getElementById('add-hint');
+      btn.textContent = '✕ Cancel';
+      btn.classList.add('active');
+      hint.textContent = type === 'listing'
+        ? '🅿️ Tap the map to drop your spot'
+        : '📍 Tap where the restriction STARTS';
+      hint.classList.add('show');
+      map.getCanvas().style.cursor = 'crosshair';
+      closeAllSheets();
+    }
 
     function toggleAddMode() {
       if (addMode) {
         exitAddMode();
       } else {
-        addMode = true;
-        pendingPinStep = 0;
-        const btn  = document.getElementById('btn-add');
-        const hint = document.getElementById('add-hint');
-        btn.textContent = '✕ Cancel';
-        btn.classList.add('active');
-        hint.textContent = '📍 Tap where the restriction STARTS';
-        hint.classList.add('show');
-        map.getCanvas().style.cursor = 'crosshair';
-        closeAllSheets();
+        enterAddMode('rule');
       }
     }
 
     // Only resets the add-mode UI — does NOT clear the dropped pins
     function exitAddModeUI() {
       addMode = false;
-      document.getElementById('btn-add').textContent = '+ Add Rule';
+      document.getElementById('btn-add').textContent = '+ Add';
       document.getElementById('btn-add').classList.remove('active');
       document.getElementById('add-hint').classList.remove('show');
       map.getCanvas().style.cursor = '';
@@ -1913,6 +2388,7 @@
       exitAddModeUI();
       clearPendingPins();
       editingId = null;
+      editingListingId = null;
     }
 
     function clearPendingPins() {
@@ -1921,6 +2397,8 @@
       pendingPinA = null;
       pendingPinB = null;
       pendingPinStep = 0;
+      if (pendingListingMarker) { pendingListingMarker.remove(); pendingListingMarker = null; }
+      pendingListingPin = null;
       try {
         if (map.getSource('preview-line')) {
           map.getSource('preview-line').setData({ type: 'FeatureCollection', features: [] });
@@ -1948,6 +2426,17 @@
     }
 
     function placePin(lat, lng) {
+      if (addModeType === 'listing') {
+        pendingListingPin = { lat, lng };
+        pendingListingMarker = createPinMarker(lat, lng, LISTING_COLORS.driveway);
+        exitAddModeUI();
+        if (editingListingId) {
+          openListingEditForm();
+        } else {
+          openListingAddSheet();
+        }
+        return;
+      }
       if (pendingPinStep === 0) {
         // First pin — start of restriction (blue)
         pendingPinA   = { lat, lng };
@@ -2376,6 +2865,562 @@
       }
     });
 
+    // ── LISTING VIEW SHEET ───────────────────────────────────────────
+    async function openListingViewSheet(id) {
+      let l = listings.find(function (x) { return x.id === id; });
+      if (!l) {
+        try {
+          const snap = await db.collection('listings').doc(id).get();
+          if (!snap.exists) { showToast('Listing not found'); return; }
+          l = Object.assign({ id: snap.id }, snap.data());
+        } catch (e) { showToast('Could not load listing'); return; }
+      }
+      viewingListingId = id;
+
+      const color = LISTING_COLORS[l.spotType] || '#999';
+      const badge = document.getElementById('lv-badge');
+      badge.textContent = LISTING_LABELS[l.spotType] || l.spotType;
+      badge.style.background = color;
+
+      document.getElementById('lv-title').textContent = l.title;
+      document.getElementById('lv-hood').textContent  = l.neighborhood;
+      document.getElementById('lv-price').textContent = '$' + Number(l.price).toFixed(2) + ' / ' + l.priceUnit;
+      document.getElementById('lv-days').textContent  =
+        (l.days || []).map(function (d) { return DAY_LABELS[d] || d; }).join(', ');
+      document.getElementById('lv-hours').textContent = fmt12(l.startTime) + ' – ' + fmt12(l.endTime);
+
+      const descRow = document.getElementById('lv-desc-row');
+      if (l.description) {
+        document.getElementById('lv-desc').textContent = l.description;
+        descRow.style.display = '';
+      } else {
+        descRow.style.display = 'none';
+      }
+
+      // Owner
+      const ownerEl = document.getElementById('lv-owner');
+      const cache   = avatarCache[l.ownerUsername] || {};
+      const ocolor  = cache.color || avatarColor(l.ownerUsername);
+      const odisp   = cache.emoji || l.ownerUsername[0].toUpperCase();
+      const ofsz    = cache.emoji ? '13px' : '10px';
+      ownerEl.style.cursor = 'pointer';
+      ownerEl.innerHTML =
+        '<span class="avatar-circle" style="background:' + ocolor + ';width:22px;height:22px;font-size:' + ofsz + ';display:inline-flex;margin-right:6px;vertical-align:middle">' + esc(odisp) + '</span>' +
+        '<span style="text-decoration:underline;text-underline-offset:2px">' + esc(l.ownerUsername) + '</span>';
+      ownerEl.onclick = function () { openUserSheet(l.ownerUsername); };
+
+      const isOwner = currentUsername && l.ownerUsername === currentUsername;
+      const ownerActions = document.getElementById('lv-owner-actions');
+      ownerActions.style.display = isOwner ? 'flex' : 'none';
+      document.getElementById('lv-booking-form').style.display = isOwner ? 'none' : '';
+
+      if (isOwner) {
+        document.getElementById('lv-pause-btn').textContent = l.status === 'paused' ? 'Resume listing' : 'Pause listing';
+      } else {
+        const dateInput  = document.getElementById('lv-date');
+        const startInput = document.getElementById('lv-start');
+        const endInput   = document.getElementById('lv-end');
+        const timeRow    = document.getElementById('lv-time-row');
+        dateInput.min = new Date().toISOString().slice(0, 10);
+        dateInput.value = '';
+        timeRow.style.display = l.priceUnit === 'day' ? 'none' : '';
+        startInput.value = l.startTime;
+        endInput.value   = l.endTime;
+        document.getElementById('lv-total').textContent = '';
+      }
+
+      openSheet('listing-view');
+    }
+
+    function updateListingTotal() {
+      const l = listings.find(function (x) { return x.id === viewingListingId; })
+        || { priceUnit: 'hour' };
+      const totalEl = document.getElementById('lv-total');
+      const dateVal = document.getElementById('lv-date').value;
+      if (!dateVal) { totalEl.textContent = ''; return; }
+      const weekday = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date(dateVal + 'T00:00:00').getDay()];
+      if (!(l.days || []).includes(weekday)) {
+        totalEl.textContent = 'Not available on ' + (DAY_LABELS[weekday] || weekday) + 's';
+        return;
+      }
+      if (l.priceUnit === 'day') {
+        totalEl.textContent = 'Total: $' + Number(l.price).toFixed(2);
+        return;
+      }
+      const start = document.getElementById('lv-start').value;
+      const end   = document.getElementById('lv-end').value;
+      if (!start || !end || start >= end) { totalEl.textContent = ''; return; }
+      if (start < l.startTime || end > l.endTime) {
+        totalEl.textContent = 'Must be within ' + fmt12(l.startTime) + '–' + fmt12(l.endTime);
+        return;
+      }
+      const sm = start.split(':').map(Number), em = end.split(':').map(Number);
+      const hours = ((em[0] * 60 + em[1]) - (sm[0] * 60 + sm[1])) / 60;
+      const total = Math.round(l.price * hours * 100) / 100;
+      totalEl.textContent = 'Total: $' + total.toFixed(2) + ' (' + hours.toFixed(1) + ' hr)';
+    }
+    document.getElementById('lv-date').addEventListener('input', updateListingTotal);
+    document.getElementById('lv-start').addEventListener('input', updateListingTotal);
+    document.getElementById('lv-end').addEventListener('input', updateListingTotal);
+
+    document.getElementById('lv-close').addEventListener('click', closeAllSheets);
+
+    document.getElementById('lv-book-btn').addEventListener('click', async function () {
+      if (!currentUsername) {
+        document.getElementById('username-modal').classList.add('open');
+        showToast('Create an account to book');
+        return;
+      }
+      const l = listings.find(function (x) { return x.id === viewingListingId; });
+      if (!l) return;
+      if (l.ownerUsername === currentUsername) { showToast("You can't book your own spot"); return; }
+
+      const dateVal = document.getElementById('lv-date').value;
+      if (!dateVal) { showToast('Pick a date'); return; }
+      const weekday = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date(dateVal + 'T00:00:00').getDay()];
+      if (!(l.days || []).includes(weekday)) { showToast('Spot is not available that day'); return; }
+
+      let start = l.startTime, end = l.endTime, price = Number(l.price);
+      if (l.priceUnit === 'hour') {
+        start = document.getElementById('lv-start').value;
+        end   = document.getElementById('lv-end').value;
+        if (!start || !end || start >= end) { showToast('Pick a valid time range'); return; }
+        if (start < l.startTime || end > l.endTime) {
+          showToast('Time must be within ' + fmt12(l.startTime) + '–' + fmt12(l.endTime));
+          return;
+        }
+        const sm = start.split(':').map(Number), em = end.split(':').map(Number);
+        const hours = ((em[0] * 60 + em[1]) - (sm[0] * 60 + sm[1])) / 60;
+        price = Math.round(l.price * hours * 100) / 100;
+      }
+
+      const btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Requesting…';
+      try {
+        const conversationId = await getOrCreateConversation(currentUsername, l.ownerUsername);
+        const bookingRef = await db.collection('bookings').add({
+          listingId:        l.id,
+          listingTitle:     l.title,
+          listingSpotType:  l.spotType,
+          ownerUsername:    l.ownerUsername,
+          renterUsername:   currentUsername,
+          date:             dateVal,
+          startTime:        start,
+          endTime:          end,
+          price:            price,
+          status:           'pending',
+          paid:             false,
+          paidBy:           null,
+          conversationId:   conversationId,
+          createdAt:        firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt:        firebase.firestore.FieldValue.serverTimestamp()
+        });
+        await sendMessage(conversationId,
+          '📋 Requested ' + (LISTING_LABELS[l.spotType] || l.spotType) + ' "' + l.title + '" on ' +
+          dateVal + ', ' + fmt12(start) + '–' + fmt12(end) + ' — $' + price.toFixed(2),
+          'system', bookingRef.id);
+        closeAllSheets();
+        showToast('Booking requested!');
+      } catch (e) {
+        console.error(e);
+        showToast('Could not request booking');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Request to Book';
+      }
+    });
+
+    document.getElementById('lv-message-btn').addEventListener('click', async function () {
+      if (!currentUsername) {
+        document.getElementById('username-modal').classList.add('open');
+        return;
+      }
+      const l = listings.find(function (x) { return x.id === viewingListingId; });
+      if (!l) return;
+      if (l.ownerUsername === currentUsername) { showToast("That's your own listing"); return; }
+      try {
+        const conversationId = await getOrCreateConversation(currentUsername, l.ownerUsername);
+        closeAllSheets();
+        openThreadSheet(conversationId, l.ownerUsername);
+      } catch (e) { showToast('Could not open conversation'); }
+    });
+
+    document.getElementById('lv-pause-btn').addEventListener('click', async function () {
+      const l = listings.find(function (x) { return x.id === viewingListingId; });
+      const currentStatus = l ? l.status : 'active';
+      const newStatus = currentStatus === 'paused' ? 'active' : 'paused';
+      try {
+        await db.collection('listings').doc(viewingListingId).update({ status: newStatus });
+        this.textContent = newStatus === 'paused' ? 'Resume listing' : 'Pause listing';
+        showToast(newStatus === 'paused' ? 'Listing paused' : 'Listing resumed');
+      } catch (e) { showToast('Could not update listing'); }
+    });
+
+    document.getElementById('lv-delete-btn').addEventListener('click', async function () {
+      if (!confirm('Delete this listing?')) return;
+      try {
+        await db.collection('listings').doc(viewingListingId).delete();
+        closeAllSheets();
+        showToast('Listing deleted');
+      } catch (e) { showToast('Could not delete'); }
+    });
+
+    // ── LISTING ADD SHEET ──────────────────────────────────────────────
+    let laSelectedSpotType = 'driveway';
+
+    function setListingSpotType(t) {
+      laSelectedSpotType = t;
+      document.getElementById('la-type-driveway').classList.toggle('selected', t === 'driveway');
+      document.getElementById('la-type-lot').classList.toggle('selected', t === 'lot');
+    }
+    document.getElementById('la-type-driveway').addEventListener('click', function() { setListingSpotType('driveway'); });
+    document.getElementById('la-type-lot').addEventListener('click', function() { setListingSpotType('lot'); });
+    // Note: [data-la-day] pills share the `.day-pill` class, which already has a
+    // generic click-to-toggle listener registered by the parking-rule form below —
+    // no separate listener needed here (would double-toggle and cancel itself out).
+
+    function openListingAddSheet() {
+      editingListingId = null;
+      const p = pendingListingPin;
+      document.getElementById('la-sheet-title').textContent = 'Rent My Spot';
+      document.getElementById('la-coords').textContent = p ? p.lat.toFixed(5) + ', ' + p.lng.toFixed(5) : '';
+      document.getElementById('la-title').value = '';
+      document.getElementById('la-hood').value  = '';
+      setListingSpotType('driveway');
+      document.getElementById('la-price').value = '';
+      document.getElementById('la-price-unit').value = 'hour';
+      document.querySelectorAll('[data-la-day]').forEach(function(p2) { p2.classList.remove('selected'); });
+      document.getElementById('la-start').value = '08:00';
+      document.getElementById('la-end').value   = '18:00';
+      document.getElementById('la-desc').value  = '';
+      document.getElementById('la-venmo').value = '';
+      if (currentUsername) {
+        db.collection('usernames').doc(currentUsername).get().then(function(snap) {
+          if (snap.exists && snap.data().venmoHandle) {
+            document.getElementById('la-venmo').value = snap.data().venmoHandle;
+          }
+        }).catch(function(){});
+      }
+      document.getElementById('la-submit').textContent = 'Save Listing';
+      document.getElementById('la-submit').disabled = false;
+      openSheet('listing-add');
+    }
+
+    function openListingEditSheet(id) {
+      const l = listings.find(function (x) { return x.id === id; });
+      if (!l) return;
+      editingListingId = id;
+      clearPendingPins();
+
+      document.getElementById('la-title').value = l.title || '';
+      document.getElementById('la-hood').value  = l.neighborhood || '';
+      setListingSpotType(l.spotType || 'driveway');
+      document.getElementById('la-price').value = l.price != null ? l.price : '';
+      document.getElementById('la-price-unit').value = l.priceUnit || 'hour';
+      document.querySelectorAll('[data-la-day]').forEach(function (p) {
+        p.classList.toggle('selected', (l.days || []).includes(p.dataset.laDay));
+      });
+      document.getElementById('la-start').value = l.startTime || '08:00';
+      document.getElementById('la-end').value   = l.endTime   || '18:00';
+      document.getElementById('la-desc').value  = l.description || '';
+      document.getElementById('la-venmo').value = l.venmoHandle || '';
+
+      openListingEditForm();
+    }
+
+    function openListingEditForm() {
+      const l = listings.find(function (x) { return x.id === editingListingId; });
+      document.getElementById('la-sheet-title').textContent = 'Edit Listing';
+      if (pendingListingPin) {
+        document.getElementById('la-coords').textContent = 'New location set';
+      } else if (l) {
+        document.getElementById('la-coords').textContent = 'Current: ' + l.lat.toFixed(5) + ', ' + l.lng.toFixed(5);
+      }
+      document.getElementById('la-submit').textContent = 'Save Changes';
+      document.getElementById('la-submit').disabled = false;
+      openSheet('listing-add');
+    }
+
+    document.getElementById('la-close').addEventListener('click', function () {
+      editingListingId = null;
+      clearPendingPins();
+      closeAllSheets();
+    });
+
+    document.getElementById('la-submit').addEventListener('click', async function () {
+      if (!editingListingId && !pendingListingPin) { showToast('Drop a pin on the map first'); return; }
+
+      const title  = document.getElementById('la-title').value.trim();
+      const hood   = document.getElementById('la-hood').value.trim();
+      const price  = parseFloat(document.getElementById('la-price').value);
+      const priceUnit = document.getElementById('la-price-unit').value;
+      const days   = Array.from(document.querySelectorAll('[data-la-day].selected'))
+                        .map(function (p) { return p.dataset.laDay; });
+      const start  = document.getElementById('la-start').value;
+      const end    = document.getElementById('la-end').value;
+      const desc   = document.getElementById('la-desc').value.trim();
+      const venmo  = document.getElementById('la-venmo').value.trim();
+
+      if (!title)          { showToast('Enter a title'); return; }
+      if (!hood)            { showToast('Enter a neighborhood'); return; }
+      if (!price || price <= 0) { showToast('Enter a price'); return; }
+      if (!days.length)    { showToast('Select at least one available day'); return; }
+      if (start >= end)    { showToast('Start time must be before end time'); return; }
+
+      const btn = document.getElementById('la-submit');
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+
+      try {
+        if (venmo && currentUsername) {
+          await db.collection('usernames').doc(currentUsername).set({ venmoHandle: venmo }, { merge: true });
+        }
+        if (editingListingId) {
+          const updateData = {
+            title: title, neighborhood: hood, spotType: laSelectedSpotType,
+            price: price, priceUnit: priceUnit, days: days, startTime: start, endTime: end,
+            description: desc || null, venmoHandle: venmo || null
+          };
+          if (pendingListingPin) {
+            updateData.lat = pendingListingPin.lat;
+            updateData.lng = pendingListingPin.lng;
+          }
+          await db.collection('listings').doc(editingListingId).update(updateData);
+          editingListingId = null;
+          clearPendingPins();
+          closeAllSheets();
+          showToast('Listing updated!');
+        } else {
+          await db.collection('listings').add({
+            ownerUsername: currentUsername,
+            title: title, neighborhood: hood, spotType: laSelectedSpotType,
+            lat: pendingListingPin.lat, lng: pendingListingPin.lng,
+            price: price, priceUnit: priceUnit, days: days, startTime: start, endTime: end,
+            description: desc || null, venmoHandle: venmo || null,
+            status: 'active',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          clearPendingPins();
+          closeAllSheets();
+          showToast('Spot listed!');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Failed to save — try again');
+        btn.disabled = false;
+        btn.textContent = editingListingId ? 'Save Changes' : 'Save Listing';
+      }
+    });
+
+    // ── MESSAGING (INBOX + THREADS) ──────────────────────────────────
+    function conversationIdFor(a, b) { return [a, b].sort().join('__'); }
+
+    async function getOrCreateConversation(a, b) {
+      const id  = conversationIdFor(a, b);
+      const ref = db.collection('conversations').doc(id);
+      const snap = await ref.get();
+      if (!snap.exists) {
+        await ref.set({
+          participants: [a, b].sort(),
+          lastMessage:  null,
+          updatedAt:    firebase.firestore.FieldValue.serverTimestamp(),
+          unread:       {}
+        });
+      }
+      return id;
+    }
+
+    async function sendMessage(conversationId, text, type, bookingId) {
+      const parts = conversationId.split('__');
+      const other = parts[0] === currentUsername ? parts[1] : parts[0];
+      const msgData = {
+        senderUsername: type === 'system' ? null : currentUsername,
+        text:           text,
+        type:           type || 'text',
+        createdAt:      firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if (bookingId) msgData.bookingId = bookingId;
+      await db.collection('conversations').doc(conversationId)
+        .collection('messages').add(msgData);
+
+      const update = {
+        lastMessage: { text: text, senderUsername: msgData.senderUsername, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+        updatedAt:   firebase.firestore.FieldValue.serverTimestamp()
+      };
+      update['unread.' + other] = firebase.firestore.FieldValue.increment(1);
+      await db.collection('conversations').doc(conversationId).set(update, { merge: true });
+    }
+
+    function attachInboxListener() {
+      if (inboxListener) { inboxListener(); inboxListener = null; }
+      if (!currentUsername) return;
+      inboxListener = db.collection('conversations')
+        .where('participants', 'array-contains', currentUsername)
+        .onSnapshot(function (snap) {
+          let total = 0;
+          snap.forEach(function (doc) {
+            const u = doc.data().unread || {};
+            total += u[currentUsername] || 0;
+          });
+          const badge = document.getElementById('inbox-badge');
+          if (badge) {
+            if (total > 0) { badge.textContent = total > 9 ? '9+' : String(total); badge.style.display = ''; }
+            else { badge.style.display = 'none'; }
+          }
+        }, function () {});
+    }
+
+    function detachInboxListener() {
+      if (inboxListener) { inboxListener(); inboxListener = null; }
+      const badge = document.getElementById('inbox-badge');
+      if (badge) badge.style.display = 'none';
+    }
+
+    async function fetchMyConversations() {
+      try {
+        const snap = await db.collection('conversations')
+          .where('participants', 'array-contains', currentUsername)
+          .orderBy('updatedAt', 'desc')
+          .get();
+        return snap.docs;
+      } catch (e) {
+        const snap = await db.collection('conversations')
+          .where('participants', 'array-contains', currentUsername)
+          .get();
+        return snap.docs.sort(function (a, b) {
+          const at = a.data().updatedAt ? a.data().updatedAt.toMillis() : 0;
+          const bt = b.data().updatedAt ? b.data().updatedAt.toMillis() : 0;
+          return bt - at;
+        });
+      }
+    }
+
+    async function openInboxSheet() {
+      if (!currentUsername) {
+        document.getElementById('username-modal').classList.add('open');
+        return;
+      }
+      const list = document.getElementById('inbox-list');
+      list.innerHTML = '<p class="empty-msg">Loading…</p>';
+      openSheet('inbox');
+      try {
+        const docs = await fetchMyConversations();
+        if (!docs.length) {
+          list.innerHTML = '<p class="empty-msg">No messages yet. Message a listing owner to get started.</p>';
+          return;
+        }
+        list.innerHTML = '';
+        docs.forEach(function (doc) {
+          const c = doc.data();
+          const other = (c.participants || []).find(function (p) { return p !== currentUsername; });
+          if (!other) return;
+          const cache   = avatarCache[other] || {};
+          const color   = cache.color || avatarColor(other);
+          const display = cache.emoji || other[0].toUpperCase();
+          const fsz     = cache.emoji ? '15px' : '11px';
+          const unread  = (c.unread && c.unread[currentUsername]) || 0;
+          const last    = c.lastMessage;
+          const row = document.createElement('div');
+          row.className = 'inbox-row';
+          row.innerHTML =
+            '<div class="avatar-circle" style="background:' + color + ';width:38px;height:38px;font-size:' + fsz + '">' + esc(display) + '</div>' +
+            '<div class="inbox-row-body">' +
+              '<div class="inbox-row-name">@' + esc(other) + '</div>' +
+              '<div class="inbox-row-preview">' + (last ? esc(last.text) : 'No messages yet') + '</div>' +
+            '</div>' +
+            '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' +
+              '<span class="inbox-row-time">' + (last ? timeAgo(last.createdAt) : '') + '</span>' +
+              (unread > 0 ? '<div class="inbox-row-dot"></div>' : '') +
+            '</div>';
+          row.addEventListener('click', function () { openThreadSheet(doc.id, other); });
+          list.appendChild(row);
+        });
+      } catch (e) {
+        console.error(e);
+        list.innerHTML = '<p class="empty-msg">Could not load inbox</p>';
+      }
+    }
+
+    function renderThreadMessages(msgs) {
+      const list = document.getElementById('thread-messages');
+      if (!msgs.length) {
+        list.innerHTML = '<p class="empty-msg">Say hello 👋</p>';
+        return;
+      }
+      list.innerHTML = '';
+      msgs.forEach(function (m) {
+        if (m.type === 'system') {
+          const row = document.createElement('div');
+          row.className = 'msg-system-row';
+          row.innerHTML = '<div class="msg-system">' + esc(m.text) + '</div>';
+          list.appendChild(row);
+          return;
+        }
+        const mine = m.senderUsername === currentUsername;
+        const row = document.createElement('div');
+        row.className = 'msg-row ' + (mine ? 'mine' : 'theirs');
+        row.innerHTML = '<div class="msg-bubble">' + esc(m.text) + '</div>';
+        list.appendChild(row);
+      });
+      list.scrollTop = list.scrollHeight;
+    }
+
+    function openThreadSheet(conversationId, otherUsername) {
+      activeConversationId = conversationId;
+      activeThreadUser     = otherUsername;
+
+      const cache   = avatarCache[otherUsername] || {};
+      const color   = cache.color || avatarColor(otherUsername);
+      const display = cache.emoji || otherUsername[0].toUpperCase();
+      const fsz     = cache.emoji ? '15px' : '11px';
+      const avatarEl = document.getElementById('thread-avatar');
+      avatarEl.style.background = color;
+      avatarEl.style.fontSize   = fsz;
+      avatarEl.textContent      = display;
+      document.getElementById('thread-username').textContent = '@' + otherUsername;
+
+      document.getElementById('thread-messages').innerHTML = '<p class="empty-msg">Loading…</p>';
+      openSheet('thread');
+
+      if (threadListener) { threadListener(); threadListener = null; }
+      threadListener = db.collection('conversations').doc(conversationId)
+        .collection('messages')
+        .orderBy('createdAt', 'asc')
+        .onSnapshot(function (snap) {
+          const msgs = [];
+          snap.forEach(function (d) { msgs.push(Object.assign({ id: d.id }, d.data())); });
+          renderThreadMessages(msgs);
+        }, function (err) {
+          console.error(err);
+          document.getElementById('thread-messages').innerHTML = '<p class="empty-msg">Could not load messages</p>';
+        });
+
+      const update = {};
+      update['unread.' + currentUsername] = 0;
+      db.collection('conversations').doc(conversationId).set(update, { merge: true }).catch(function () {});
+    }
+
+    document.getElementById('inbox-btn').addEventListener('click', openInboxSheet);
+    document.getElementById('inbox-close').addEventListener('click', closeAllSheets);
+    document.getElementById('thread-close').addEventListener('click', closeAllSheets);
+
+    document.getElementById('thread-send').addEventListener('click', async function () {
+      const input = document.getElementById('thread-input');
+      const text  = input.value.trim();
+      if (!text || !activeConversationId) return;
+      input.value = '';
+      try {
+        await sendMessage(activeConversationId, text, 'text');
+      } catch (e) { showToast('Could not send message'); }
+    });
+    document.getElementById('thread-input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById('thread-send').click();
+      }
+    });
+
     // ── MY SUBMISSIONS SHEET ─────────────────────────────────────────
     document.getElementById('profile-btn').addEventListener('click', openMySheet);
     document.getElementById('my-close').addEventListener('click', closeAllSheets);
@@ -2409,6 +3454,7 @@
       auth.signOut().then(function () {
         currentUsername = null;
         detachNotificationsListener();
+        detachInboxListener();
         updateProfileBtn();
         closeAllSheets();
         showToast('Signed out');
@@ -2416,6 +3462,7 @@
     });
 
     async function openMySheet() {
+      myTab = 'rules';
       const list = document.getElementById('my-list');
       list.innerHTML = '<p class="empty-msg">Loading…</p>';
       openSheet('my');
@@ -2423,6 +3470,25 @@
       // Update header
       document.getElementById('my-title').textContent = currentUsername ? currentUsername + "'s rules" : 'My rules';
       document.getElementById('signout-btn').style.display = currentUsername ? '' : 'none';
+
+      // Tabs + venmo field (own logged-in profile only)
+      document.getElementById('my-list').style.display = '';
+      document.getElementById('my-listings-list').style.display = 'none';
+      document.getElementById('my-bookings-list').style.display = 'none';
+      document.querySelectorAll('#my-tabs .tab-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.myTab === 'rules'); });
+      if (currentUsername) {
+        document.getElementById('my-tabs').style.display = '';
+        document.getElementById('venmo-row').style.display = '';
+        document.getElementById('venmo-input').value = '';
+        db.collection('usernames').doc(currentUsername).get().then(function (snap) {
+          if (snap.exists && snap.data().venmoHandle) {
+            document.getElementById('venmo-input').value = snap.data().venmoHandle;
+          }
+        }).catch(function () {});
+      } else {
+        document.getElementById('my-tabs').style.display = 'none';
+        document.getElementById('venmo-row').style.display = 'none';
+      }
 
       // Large avatar (logged-in only)
       const avatarWrap   = document.getElementById('my-avatar-wrap');
@@ -2546,6 +3612,234 @@
       });
     }
 
+    // ── MY-SHEET TABS (Rules / My Spots / My Rentals) ────────────────
+    document.querySelectorAll('#my-tabs .tab-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        myTab = this.dataset.myTab;
+        document.querySelectorAll('#my-tabs .tab-btn').forEach(function (b) { b.classList.toggle('active', b === btn); });
+        document.getElementById('my-list').style.display          = myTab === 'rules'    ? '' : 'none';
+        document.getElementById('my-listings-list').style.display = myTab === 'listings' ? '' : 'none';
+        document.getElementById('my-bookings-list').style.display = myTab === 'bookings' ? '' : 'none';
+        if (myTab === 'listings') loadMyListingsTab();
+        if (myTab === 'bookings') loadMyBookingsTab();
+      });
+    });
+
+    document.getElementById('venmo-save-btn').addEventListener('click', async function () {
+      if (!currentUsername) return;
+      const val = document.getElementById('venmo-input').value.trim();
+      this.disabled = true;
+      try {
+        await db.collection('usernames').doc(currentUsername)
+          .set({ venmoHandle: val || firebase.firestore.FieldValue.delete() }, { merge: true });
+        showToast('Venmo handle saved');
+      } catch (e) { showToast('Could not save'); }
+      finally { this.disabled = false; }
+    });
+
+    function openThreadSheetForBooking(b) {
+      const other = b.renterUsername === currentUsername ? b.ownerUsername : b.renterUsername;
+      openThreadSheet(b.conversationId, other);
+    }
+
+    async function updateBookingStatus(bookingId, updates, label) {
+      try {
+        const ref  = db.collection('bookings').doc(bookingId);
+        const snap = await ref.get();
+        if (!snap.exists) { showToast('Booking not found'); return; }
+        const b = snap.data();
+        await ref.update(Object.assign({ updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, updates));
+        if (b.conversationId) {
+          const summary = (LISTING_LABELS[b.listingSpotType] || b.listingSpotType) + ' "' + b.listingTitle + '", ' +
+            b.date + ', ' + fmt12(b.startTime) + '–' + fmt12(b.endTime) + ', $' + Number(b.price).toFixed(2);
+          await sendMessage(b.conversationId, label + ' — ' + summary, 'system', bookingId);
+        }
+        if (myTab === 'listings') loadMyListingsTab();
+        if (myTab === 'bookings') loadMyBookingsTab();
+        showToast('Updated');
+      } catch (e) {
+        console.error(e);
+        showToast('Could not update booking');
+      }
+    }
+
+    function acceptBooking(id)   { updateBookingStatus(id, { status: 'accepted' },  '✅ Booking accepted'); }
+    function declineBooking(id)  { updateBookingStatus(id, { status: 'declined' },  '❌ Booking declined'); }
+    function completeBooking(id) { updateBookingStatus(id, { status: 'completed' }, '🏁 Booking marked complete'); }
+    function cancelBooking(id) {
+      if (!confirm('Cancel this booking?')) return;
+      updateBookingStatus(id, { status: 'cancelled' }, '🚫 Booking cancelled');
+    }
+    function markBookingPaid(id) {
+      updateBookingStatus(id, { paid: true, paidBy: currentUsername }, '💳 Marked as paid by @' + currentUsername);
+    }
+
+    async function loadMyListingsTab() {
+      const container = document.getElementById('my-listings-list');
+      container.innerHTML = '<p class="empty-msg">Loading…</p>';
+      try {
+        const [listingsSnap, bookingsSnap] = await Promise.all([
+          db.collection('listings').where('ownerUsername', '==', currentUsername).get(),
+          db.collection('bookings').where('ownerUsername', '==', currentUsername).get()
+        ]);
+        if (listingsSnap.empty) {
+          container.innerHTML = '<p class="empty-msg">You haven\'t listed any spots yet.</p>';
+          return;
+        }
+        const byListing = {};
+        bookingsSnap.forEach(function (d) {
+          const b = Object.assign({ id: d.id }, d.data());
+          if (b.status !== 'pending' && b.status !== 'accepted') return;
+          (byListing[b.listingId] = byListing[b.listingId] || []).push(b);
+        });
+
+        const docs = listingsSnap.docs.slice().sort(function (a, b) {
+          const at = a.data().createdAt ? a.data().createdAt.toMillis() : 0;
+          const bt = b.data().createdAt ? b.data().createdAt.toMillis() : 0;
+          return bt - at;
+        });
+
+        container.innerHTML = '';
+        docs.forEach(function (doc) {
+          const l = Object.assign({ id: doc.id }, doc.data());
+          const color = LISTING_COLORS[l.spotType] || '#999';
+          const item = document.createElement('div');
+          item.className = 'my-item';
+          item.innerHTML =
+            '<div class="my-item-dot" style="background:' + color + '"></div>' +
+            '<div class="my-item-body">' +
+              '<div class="my-item-street">' + esc(l.title) + (l.status === 'paused' ? '<span class="status-pill pending">Paused</span>' : '') + '</div>' +
+              '<div class="my-item-hood">' + esc(l.neighborhood) + '</div>' +
+              '<div class="my-item-info">' + esc(LISTING_LABELS[l.spotType] || l.spotType) + ' · $' + Number(l.price).toFixed(2) + '/' + l.priceUnit + '</div>' +
+            '</div>' +
+            '<div class="my-item-actions">' +
+              '<button class="my-item-edit">Edit</button>' +
+              '<button class="my-item-delete">Delete</button>' +
+            '</div>';
+          item.querySelector('.my-item-body').style.cursor = 'pointer';
+          item.querySelector('.my-item-body').addEventListener('click', function () {
+            closeAllSheets();
+            map.flyTo({ center: [l.lng, l.lat], zoom: Math.max(map.getZoom(), 16), duration: 700, essential: true });
+            setTimeout(function () { openListingViewSheet(l.id); }, 750);
+          });
+          item.querySelector('.my-item-edit').addEventListener('click', function () {
+            closeAllSheets();
+            openListingEditSheet(l.id);
+          });
+          item.querySelector('.my-item-delete').addEventListener('click', async function () {
+            if (!confirm('Delete this listing?')) return;
+            try {
+              await db.collection('listings').doc(l.id).delete();
+              loadMyListingsTab();
+              showToast('Deleted');
+            } catch (e) { showToast('Could not delete'); }
+          });
+          container.appendChild(item);
+
+          (byListing[l.id] || []).forEach(function (b) {
+            const card = document.createElement('div');
+            card.className = 'my-item';
+            card.style.marginTop = '-4px';
+            card.innerHTML =
+              '<div class="my-item-body">' +
+                '<div class="my-item-street">@' + esc(b.renterUsername) + '<span class="status-pill ' + b.status + '">' + b.status + '</span></div>' +
+                '<div class="my-item-info">' + esc(b.date) + ' · ' + fmt12(b.startTime) + '–' + fmt12(b.endTime) + ' · $' + Number(b.price).toFixed(2) + '</div>' +
+                '<div class="booking-card-actions"></div>' +
+              '</div>';
+            const actionsEl = card.querySelector('.booking-card-actions');
+            if (b.status === 'pending') {
+              const acceptBtn = document.createElement('button');
+              acceptBtn.className = 'btn-accept'; acceptBtn.textContent = 'Accept';
+              acceptBtn.addEventListener('click', function () { acceptBooking(b.id); });
+              const declineBtn = document.createElement('button');
+              declineBtn.className = 'btn-decline'; declineBtn.textContent = 'Decline';
+              declineBtn.addEventListener('click', function () { declineBooking(b.id); });
+              actionsEl.appendChild(acceptBtn);
+              actionsEl.appendChild(declineBtn);
+            } else if (b.status === 'accepted') {
+              const completeBtn = document.createElement('button');
+              completeBtn.className = 'btn-complete'; completeBtn.textContent = 'Mark Complete';
+              completeBtn.addEventListener('click', function () { completeBooking(b.id); });
+              actionsEl.appendChild(completeBtn);
+            }
+            card.querySelector('.my-item-body').style.cursor = 'pointer';
+            card.querySelector('.my-item-body').addEventListener('click', function (e) {
+              if (e.target.closest('button')) return;
+              closeAllSheets();
+              openThreadSheetForBooking(b);
+            });
+            container.appendChild(card);
+          });
+        });
+      } catch (e) {
+        console.error(e);
+        container.innerHTML = '<p class="empty-msg">Could not load your spots</p>';
+      }
+    }
+
+    async function loadMyBookingsTab() {
+      const container = document.getElementById('my-bookings-list');
+      container.innerHTML = '<p class="empty-msg">Loading…</p>';
+      try {
+        const snap = await db.collection('bookings').where('renterUsername', '==', currentUsername).get();
+        if (snap.empty) {
+          container.innerHTML = '<p class="empty-msg">You haven\'t booked any spots yet.</p>';
+          return;
+        }
+        const docs = snap.docs.slice().sort(function (a, b) {
+          const at = a.data().createdAt ? a.data().createdAt.toMillis() : 0;
+          const bt = b.data().createdAt ? b.data().createdAt.toMillis() : 0;
+          return bt - at;
+        });
+        container.innerHTML = '';
+        docs.forEach(function (doc) {
+          const b = Object.assign({ id: doc.id }, doc.data());
+          const color = LISTING_COLORS[b.listingSpotType] || '#999';
+          const item = document.createElement('div');
+          item.className = 'my-item';
+          item.innerHTML =
+            '<div class="my-item-dot" style="background:' + color + '"></div>' +
+            '<div class="my-item-body">' +
+              '<div class="my-item-street">' + esc(b.listingTitle) +
+                '<span class="status-pill ' + b.status + '">' + b.status + '</span>' +
+                (b.paid ? '<span class="status-pill paid">Paid</span>' : '') +
+              '</div>' +
+              '<div class="my-item-hood">from @' + esc(b.ownerUsername) + '</div>' +
+              '<div class="my-item-info">' + esc(b.date) + ' · ' + fmt12(b.startTime) + '–' + fmt12(b.endTime) + ' · $' + Number(b.price).toFixed(2) + '</div>' +
+              '<div class="booking-card-actions"></div>' +
+            '</div>';
+          const actionsEl = item.querySelector('.booking-card-actions');
+          if (b.status === 'pending') {
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn-cancel-booking'; cancelBtn.textContent = 'Cancel request';
+            cancelBtn.addEventListener('click', function () { cancelBooking(b.id); });
+            actionsEl.appendChild(cancelBtn);
+          } else if (b.status === 'accepted') {
+            if (!b.paid) {
+              const paidBtn = document.createElement('button');
+              paidBtn.className = 'btn-paid'; paidBtn.textContent = 'Mark Paid';
+              paidBtn.addEventListener('click', function () { markBookingPaid(b.id); });
+              actionsEl.appendChild(paidBtn);
+            }
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn-cancel-booking'; cancelBtn.textContent = 'Cancel';
+            cancelBtn.addEventListener('click', function () { cancelBooking(b.id); });
+            actionsEl.appendChild(cancelBtn);
+          }
+          item.querySelector('.my-item-body').style.cursor = 'pointer';
+          item.querySelector('.my-item-body').addEventListener('click', function (e) {
+            if (e.target.closest('button')) return;
+            closeAllSheets();
+            openThreadSheetForBooking(b);
+          });
+          container.appendChild(item);
+        });
+      } catch (e) {
+        console.error(e);
+        container.innerHTML = '<p class="empty-msg">Could not load your rentals</p>';
+      }
+    }
+
     // ── USER PROFILE SHEET ──────────────────────────────────────────
     async function openUserSheet(username) {
       viewingUser = username;
@@ -2555,6 +3849,11 @@
 
       document.getElementById('my-title').textContent = username + "'s Pins";
       document.getElementById('signout-btn').style.display = 'none';
+      document.getElementById('my-tabs').style.display = 'none';
+      document.getElementById('venmo-row').style.display = 'none';
+      document.getElementById('my-list').style.display = '';
+      document.getElementById('my-listings-list').style.display = 'none';
+      document.getElementById('my-bookings-list').style.display = 'none';
 
       // Fetch avatar from Firestore if not cached
       if (!avatarCache[username]) {
@@ -2677,17 +3976,21 @@
 
     function closeAllSheets(reEnable) {
       if (sheetOpen === 'view') detachComments();
+      if (sheetOpen === 'thread' && threadListener) { threadListener(); threadListener = null; }
       if (reEnable !== false) {
         map.dragPan.enable();
         map.scrollZoom.enable();
       }
-      ['view', 'add', 'my'].forEach(function (n) {
+      ['view', 'add', 'my', 'listing-view', 'listing-add', 'inbox', 'thread'].forEach(function (n) {
         document.getElementById(n + '-sheet').classList.remove('open');
       });
       document.getElementById('sheet-backdrop').classList.remove('visible');
       sheetOpen = null;
       viewingId = null;
       viewingUser = null;
+      viewingListingId = null;
+      activeConversationId = null;
+      activeThreadUser = null;
     }
 
     document.getElementById('sheet-backdrop').addEventListener('click', function () {
@@ -2921,15 +4224,45 @@
         applyTypeFilter();
       });
     });
+
+    function applyListingTypeFilter() {
+      const types = Array.from(activeListingTypes);
+      const allOn = types.length === Object.keys(LISTING_LABELS).length;
+      const filterExpr = allOn
+        ? null
+        : ['in', ['get', 'spotType'], ['literal', types.length ? types : ['__none__']]];
+      ['listing-fill', 'listing-border'].forEach(function(lid) {
+        if (map.getLayer(lid)) map.setFilter(lid, filterExpr);
+      });
+    }
+
+    document.querySelectorAll('.legend-row[data-listing-type]').forEach(function(row) {
+      row.addEventListener('click', function() {
+        const t = this.dataset.listingType;
+        if (activeListingTypes.has(t)) {
+          activeListingTypes.delete(t);
+          this.classList.add('off');
+        } else {
+          activeListingTypes.add(t);
+          this.classList.remove('off');
+        }
+        applyListingTypeFilter();
+      });
+    });
+
     document.getElementById('legend-all-btn').addEventListener('click', function() {
       activeTypes = new Set(Object.keys(TYPE_LABELS));
-      document.querySelectorAll('.legend-row[data-type]').forEach(function(r) { r.classList.remove('off'); });
+      activeListingTypes = new Set(Object.keys(LISTING_LABELS));
+      document.querySelectorAll('.legend-row[data-type], .legend-row[data-listing-type]').forEach(function(r) { r.classList.remove('off'); });
       applyTypeFilter();
+      applyListingTypeFilter();
     });
     document.getElementById('legend-none-btn').addEventListener('click', function() {
       activeTypes = new Set();
-      document.querySelectorAll('.legend-row[data-type]').forEach(function(r) { r.classList.add('off'); });
+      activeListingTypes = new Set();
+      document.querySelectorAll('.legend-row[data-type], .legend-row[data-listing-type]').forEach(function(r) { r.classList.add('off'); });
       applyTypeFilter();
+      applyListingTypeFilter();
     });
     document.addEventListener('pointerdown', function (e) {
       const panel = document.getElementById('legend-panel');
