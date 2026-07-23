@@ -21,6 +21,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
   <style>
     /* ── TOKENS ──────────────────────────────────────────────────── */
@@ -779,52 +780,16 @@
 
     /* ── AUTH MODAL ──────────────────────────────────────────────── */
 
-    /* ── LEGEND ──────────────────────────────────────────────────── */
-    #legend-panel {
-      position: fixed;
-      top: 0; right: 0;   /* overridden by JS on open */
-      z-index: 400;
-      background: var(--bg);
-      border-radius: 14px;
-      box-shadow: 0 4px 20px rgba(0,0,0,.22);
-      padding: 14px 16px;
-      min-width: 185px;
-      display: none;
-    }
-    #legend-panel.open { display: block; }
-    .legend-title {
-      font-size: 10px; font-weight: 700;
-      letter-spacing: .5px; text-transform: uppercase;
-      color: var(--text3); margin-bottom: 10px;
-    }
-    .legend-row {
-      display: flex; align-items: center; gap: 9px;
-      margin: 0 -4px 2px; padding: 4px;
-      border-radius: 7px; cursor: pointer;
+    /* ── LAYER TOGGLE EYES ───────────────────────────────────────── */
+    .eye-toggle-btn {
+      width: 29px; height: 29px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0; cursor: pointer; border: none; background: transparent;
+      color: var(--text2);
       transition: opacity .15s;
-      user-select: none;
     }
-    .legend-row:last-child { margin-bottom: 0; }
-    .legend-row:active { background: var(--surface); }
-    .legend-row.off { opacity: 0.28; }
-    .legend-dot {
-      width: 13px; height: 13px;
-      border-radius: 50%;
-      border: 2px solid rgba(255,255,255,.7);
-      box-shadow: 0 1px 4px rgba(0,0,0,.25);
-      flex-shrink: 0;
-    }
-    .legend-label { font-size: 13px; color: var(--text); }
-    #legend-filter-actions {
-      display: flex; gap: 6px; margin-bottom: 8px;
-    }
-    .legend-filter-btn {
-      flex: 1; padding: 5px 0;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 7px; font-size: 11px; font-weight: 700;
-      color: var(--text); cursor: pointer; font-family: var(--font);
-    }
-    .legend-filter-btn:active { opacity: 0.7; }
+    .eye-toggle-btn.off { opacity: .32; }
+    .eye-toggle-btn.listings-eye { color: var(--c-driveway); }
 
     /* ── DARK MODE ───────────────────────────────────────────────── */
     @media (prefers-color-scheme: dark) {
@@ -1035,9 +1000,15 @@
     }
 
     /* ── ADD-MODE MENU ────────────────────────────────────────────── */
-    #add-menu-wrap { position: relative; }
+    #add-menu-wrap {
+      position: fixed;
+      bottom: calc(var(--safe-bottom) + 16px + 42px + 10px);
+      left: calc(var(--safe-left) + 16px);
+      z-index: 300;
+    }
+    #add-menu-wrap #btn-add { box-shadow: 0 2px 10px rgba(0,0,0,.18); }
     #add-menu {
-      display: none; position: absolute; top: calc(100% + 6px); right: 0;
+      display: none; position: absolute; bottom: calc(100% + 6px); left: 0;
       background: var(--bg); border: 1.5px solid var(--border);
       border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.16);
       z-index: 500; overflow: hidden; min-width: 190px;
@@ -1140,6 +1111,46 @@
       border: none; border-radius: 8px; font-size: 12px; font-weight: 600;
       cursor: pointer; font-family: var(--font); flex-shrink: 0;
     }
+
+    /* ── LISTING PHOTO PICKER (add/edit form) ────────────────────── */
+    .photo-picker-row { display: flex; gap: 8px; }
+    .photo-slot {
+      position: relative;
+      width: 72px; height: 72px; border-radius: 12px;
+      flex-shrink: 0; overflow: hidden;
+      background: var(--surface);
+      border: 1.5px dashed var(--border);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    .photo-slot.filled { border-style: solid; border-color: var(--border); }
+    .photo-slot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .photo-slot-add-icon { font-size: 22px; color: var(--text3); }
+    .photo-slot-remove {
+      position: absolute; top: 3px; right: 3px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: rgba(0,0,0,.6); color: #fff;
+      border: none; font-size: 13px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    .photo-slot-uploading {
+      position: absolute; inset: 0; background: rgba(0,0,0,.45);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 11px; font-weight: 600; text-align: center;
+    }
+
+    /* ── LISTING PHOTO STRIP (view sheet) ────────────────────────── */
+    #lv-photo-strip {
+      display: flex; gap: 8px; overflow-x: auto;
+      scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+      margin: -2px -2px 4px; padding: 2px;
+    }
+    #lv-photo-strip img {
+      width: 100%; max-width: 320px; height: 180px; object-fit: cover;
+      border-radius: 14px; flex-shrink: 0; scroll-snap-align: start;
+      background: var(--surface);
+    }
   </style>
 </head>
 <body>
@@ -1159,13 +1170,6 @@
         💬<span id="inbox-badge"></span>
       </button>
       <button class="topbar-btn" id="btn-laws">LA Laws</button>
-      <div id="add-menu-wrap">
-        <button class="topbar-btn" id="btn-add">+ Add</button>
-        <div id="add-menu">
-          <div class="add-menu-item" id="add-menu-rule">📍 Parking Rule</div>
-          <div class="add-menu-item" id="add-menu-listing">🅿️ Rent My Spot</div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -1391,6 +1395,7 @@
       <button class="sheet-close" id="lv-close">×</button>
     </div>
     <div class="sheet-body">
+      <div id="lv-photo-strip" style="display:none"></div>
       <span id="lv-badge" class="type-badge"></span>
 
       <div class="detail-row">
@@ -1509,6 +1514,12 @@
       </div>
 
       <div class="form-group">
+        <label class="form-label">Photos <span style="font-weight:400;color:var(--text3)">(optional, up to 4)</span></label>
+        <div class="photo-picker-row" id="la-photo-row"></div>
+        <input type="file" id="la-photo-file-input" accept="image/*" style="display:none" />
+      </div>
+
+      <div class="form-group">
         <label class="form-label">Description <span style="font-weight:400;color:var(--text3)">(optional)</span></label>
         <textarea class="form-textarea" id="la-desc" placeholder="e.g. Fits 1 sedan, gate code shared after booking" maxlength="280"></textarea>
       </div>
@@ -1580,33 +1591,19 @@
     </div>
   </div>
 
+  <!-- ── ADD BUTTON ──────────────────────────────────────── -->
+  <div id="add-menu-wrap">
+    <button class="topbar-btn" id="btn-add">+ Add</button>
+    <div id="add-menu">
+      <div class="add-menu-item" id="add-menu-rule">📍 Parking Rule</div>
+      <div class="add-menu-item" id="add-menu-listing">🅿️ Rent My Spot</div>
+    </div>
+  </div>
+
   <!-- ── PROFILE BUTTON ────────────────────────────────── -->
   <button id="profile-btn" aria-label="My profile">👤<span id="notif-badge"></span></button>
 
 
-  <!-- ── FILTER PANEL ────────────────────────────────── -->
-  <div id="legend-panel">
-    <div class="legend-title">Legend &amp; Filter <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:9px;color:var(--text3)">(tap to toggle)</span></div>
-    <div id="legend-filter-actions">
-      <button class="legend-filter-btn" id="legend-all-btn">Show All</button>
-      <button class="legend-filter-btn" id="legend-none-btn">Hide All</button>
-    </div>
-    <div class="legend-row" data-type="no_parking"><div class="legend-dot" style="background:var(--c-no-parking)"></div>  <span class="legend-label">No Parking</span></div>
-    <div class="legend-row" data-type="2hr_limit"><div class="legend-dot" style="background:var(--c-2hr)"></div>           <span class="legend-label">2-Hour Limit</span></div>
-    <div class="legend-row" data-type="4hr_limit"><div class="legend-dot" style="background:var(--c-4hr)"></div>           <span class="legend-label">4-Hour Limit</span></div>
-    <div class="legend-row" data-type="permit_only"><div class="legend-dot" style="background:var(--c-permit)"></div>      <span class="legend-label">Permit Only</span></div>
-    <div class="legend-row" data-type="street_cleaning"><div class="legend-dot" style="background:var(--c-cleaning)"></div><span class="legend-label">Street Cleaning</span></div>
-    <div class="legend-row" data-type="free_parking"><div class="legend-dot" style="background:var(--c-free)"></div>       <span class="legend-label">Free Parking</span></div>
-    <div class="legend-title" style="margin-top:10px">Curb Colors</div>
-    <div class="legend-row" data-type="curb_red"><div class="legend-dot" style="background:var(--c-curb-red)"></div>       <span class="legend-label">Red Curb</span></div>
-    <div class="legend-row" data-type="curb_yellow"><div class="legend-dot" style="background:var(--c-curb-yellow)"></div> <span class="legend-label">Yellow Curb</span></div>
-    <div class="legend-row" data-type="curb_white"><div class="legend-dot" style="background:var(--c-curb-white)"></div>   <span class="legend-label">White Curb</span></div>
-    <div class="legend-row" data-type="curb_green"><div class="legend-dot" style="background:var(--c-curb-green)"></div>   <span class="legend-label">Green Curb</span></div>
-    <div class="legend-row" data-type="curb_blue"><div class="legend-dot" style="background:var(--c-curb-blue)"></div>     <span class="legend-label">Blue Curb</span></div>
-    <div class="legend-title" style="margin-top:10px">Rental Spots</div>
-    <div class="legend-row" data-listing-type="driveway"><div class="legend-dot" style="background:var(--c-driveway)"></div> <span class="legend-label">Driveway</span></div>
-    <div class="legend-row" data-listing-type="lot"><div class="legend-dot" style="background:var(--c-lot)"></div>          <span class="legend-label">Private Lot</span></div>
-  </div>
 
   <!-- ── LA LAWS MODAL ─────────────────────────────────── -->
   <div id="laws-backdrop">
@@ -1772,7 +1769,7 @@
     const LISTING_LABELS = { driveway: 'Driveway', lot: 'Private Lot' };
 
     // ── STATE ───────────────────────────────────────────────────────
-    let map, db, auth;
+    let map, db, auth, storage;
     let currentUser     = null;
     let currentUsername = null;   // null = guest
     let avatarCache     = {};     // { username: { emoji, color } }
@@ -1790,15 +1787,18 @@
     let notificationsListener  = null;  // Firestore unsubscribe for notification badge
     let sheetOpen       = null;
     let viewingUser     = null;   // non-null when my-sheet is showing another user's profile
-    let activeTypes     = new Set(Object.keys(TYPE_LABELS));
+    let rulesVisible    = true;   // parking-laws eye toggle
 
     // Marketplace state
     let listings           = [];
-    let activeListingTypes = new Set(Object.keys(LISTING_LABELS));
+    let listingsVisible    = true; // rentable-spaces eye toggle
     let viewingListingId   = null;
     let editingListingId   = null;
     let pendingListingPin  = null;   // { lat, lng }
     let pendingListingMarker = null;
+    let pendingPhotos      = [null, null, null, null]; // each: null | File (new) | string (existing URL)
+    let removedPhotoUrls   = [];     // existing URLs removed during an edit, deleted from Storage on save
+    let activePhotoSlotIndex = null;
     let inboxListener       = null;  // Firestore unsubscribe for inbox unread badge
     let threadListener      = null;  // Firestore unsubscribe for open thread messages
     let activeThreadUser    = null;  // other participant's username, when thread sheet open
@@ -1932,8 +1932,9 @@
 
     // ── FIREBASE ────────────────────────────────────────────────────
     firebase.initializeApp(FIREBASE_CONFIG);
-    db   = firebase.firestore();
-    auth = firebase.auth();
+    db      = firebase.firestore();
+    auth    = firebase.auth();
+    storage = firebase.storage();
 
     // ── AUTH MODAL ──────────────────────────────────────────────────
     function validateUsername(name) {
@@ -2085,30 +2086,30 @@
     });
     map.addControl(geolocate, 'top-right');
 
-    // Eye / filter button below geolocate
+    // Two eye toggles below geolocate: parking laws, rentable spaces (independent on/off)
+    const EYE_ICON_SVG =
+      '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+      + '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>'
+      + '<circle cx="12" cy="12" r="3"/>'
+      + '</svg>';
     map.addControl({
       onAdd: function() {
         const div = document.createElement('div');
         div.className = 'maplibregl-ctrl maplibregl-ctrl-group';
         div.innerHTML =
-          '<button id="filter-ctrl-btn" title="Filter types" style="width:29px;height:29px;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;border:none;background:transparent;position:relative">'
-          + '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
-          + '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>'
-          + '<circle cx="12" cy="12" r="3"/>'
-          + '</svg>'
-          + '<span id="filter-active-dot" style="display:none;position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:1.5px solid #fff"></span>'
-          + '</button>';
-        div.querySelector('#filter-ctrl-btn').addEventListener('click', function() {
-          const panel = document.getElementById('legend-panel');
-          if (panel.classList.contains('open')) {
-            panel.classList.remove('open');
-            return;
-          }
-          const rect = this.getBoundingClientRect();
-          panel.style.top  = rect.top + 'px';
-          panel.style.right = (window.innerWidth - rect.left + 8) + 'px';
-          panel.style.left  = 'auto';
-          panel.classList.add('open');
+          '<button id="toggle-rules-btn" class="eye-toggle-btn" title="Toggle parking laws" aria-pressed="true" aria-label="Toggle parking laws">' + EYE_ICON_SVG + '</button>'
+          + '<button id="toggle-listings-btn" class="eye-toggle-btn listings-eye" title="Toggle rentable spaces" aria-pressed="true" aria-label="Toggle rentable spaces">' + EYE_ICON_SVG + '</button>';
+        div.querySelector('#toggle-rules-btn').addEventListener('click', function() {
+          rulesVisible = !rulesVisible;
+          this.classList.toggle('off', !rulesVisible);
+          this.setAttribute('aria-pressed', String(rulesVisible));
+          applyTypeFilter();
+        });
+        div.querySelector('#toggle-listings-btn').addEventListener('click', function() {
+          listingsVisible = !listingsVisible;
+          this.classList.toggle('off', !listingsVisible);
+          this.setAttribute('aria-pressed', String(listingsVisible));
+          applyListingTypeFilter();
         });
         return div;
       },
@@ -2912,6 +2913,17 @@
       }
       viewingListingId = id;
 
+      const photoStrip = document.getElementById('lv-photo-strip');
+      if (l.photoUrls && l.photoUrls.length) {
+        photoStrip.innerHTML = l.photoUrls.map(function (url) {
+          return '<img src="' + esc(url) + '" alt="' + esc(l.title || 'Listing photo') + '" loading="lazy" />';
+        }).join('');
+        photoStrip.style.display = 'flex';
+      } else {
+        photoStrip.innerHTML = '';
+        photoStrip.style.display = 'none';
+      }
+
       const color = LISTING_COLORS[l.spotType] || '#999';
       const badge = document.getElementById('lv-badge');
       badge.textContent = LISTING_LABELS[l.spotType] || l.spotType;
@@ -3115,6 +3127,82 @@
     // generic click-to-toggle listener registered by the parking-rule form below —
     // no separate listener needed here (would double-toggle and cancel itself out).
 
+    // ── Photo picker ──────────────────────────────────────────────────
+    function renderPhotoPicker() {
+      const row = document.getElementById('la-photo-row');
+      row.innerHTML = '';
+      pendingPhotos.forEach(function (p, i) {
+        const slot = document.createElement('div');
+        slot.className = 'photo-slot' + (p ? ' filled' : '');
+        if (p) {
+          const src = p instanceof File ? URL.createObjectURL(p) : p;
+          slot.innerHTML =
+            '<img src="' + src + '" alt="" />' +
+            '<button type="button" class="photo-slot-remove" aria-label="Remove photo">×</button>';
+          slot.querySelector('.photo-slot-remove').addEventListener('click', function (e) {
+            e.stopPropagation();
+            const val = pendingPhotos[i];
+            if (typeof val === 'string') removedPhotoUrls.push(val);
+            pendingPhotos[i] = null;
+            renderPhotoPicker();
+          });
+        } else {
+          slot.innerHTML = '<span class="photo-slot-add-icon">＋</span>';
+          slot.addEventListener('click', function () {
+            activePhotoSlotIndex = i;
+            document.getElementById('la-photo-file-input').click();
+          });
+        }
+        row.appendChild(slot);
+      });
+    }
+
+    document.getElementById('la-photo-file-input').addEventListener('change', function () {
+      const file = this.files[0];
+      this.value = '';
+      if (!file || activePhotoSlotIndex == null) return;
+      if (!file.type.startsWith('image/')) { showToast('Please choose an image file'); return; }
+      pendingPhotos[activePhotoSlotIndex] = file;
+      renderPhotoPicker();
+    });
+
+    function resizeImageFile(file, maxDim) {
+      return new Promise(function (resolve, reject) {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = function () {
+          URL.revokeObjectURL(url);
+          let w = img.width, h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+            else       { w = Math.round(w * maxDim / h); h = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          canvas.toBlob(function (blob) {
+            if (blob) resolve(blob); else reject(new Error('Could not process image'));
+          }, 'image/jpeg', 0.82);
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Could not load image')); };
+        img.src = url;
+      });
+    }
+
+    async function uploadListingPhoto(blob) {
+      const path = 'listing-photos/' + currentUsername + '/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.jpg';
+      const ref  = storage.ref().child(path);
+      const task = ref.put(blob, { contentType: 'image/jpeg' });
+      const timeout = new Promise(function (_, reject) {
+        setTimeout(function () { reject(new Error('upload-timeout')); }, 20000);
+      });
+      await Promise.race([task, timeout]).catch(function (e) {
+        task.cancel();
+        throw e;
+      });
+      return ref.getDownloadURL();
+    }
+
     function openListingAddSheet() {
       editingListingId = null;
       const p = pendingListingPin;
@@ -3130,6 +3218,9 @@
       document.getElementById('la-end').value   = '18:00';
       document.getElementById('la-desc').value  = '';
       document.getElementById('la-venmo').value = '';
+      pendingPhotos = [null, null, null, null];
+      removedPhotoUrls = [];
+      renderPhotoPicker();
       if (currentUsername) {
         db.collection('usernames').doc(currentUsername).get().then(function(snap) {
           if (snap.exists && snap.data().venmoHandle) {
@@ -3160,6 +3251,10 @@
       document.getElementById('la-end').value   = l.endTime   || '18:00';
       document.getElementById('la-desc').value  = l.description || '';
       document.getElementById('la-venmo').value = l.venmoHandle || '';
+      const existingPhotos = l.photoUrls || [];
+      pendingPhotos = [0, 1, 2, 3].map(function (i) { return existingPhotos[i] || null; });
+      removedPhotoUrls = [];
+      renderPhotoPicker();
 
       openListingEditForm();
     }
@@ -3208,6 +3303,20 @@
       btn.textContent = 'Saving…';
 
       try {
+        const pendingUploadCount = pendingPhotos.filter(function (p) { return p instanceof File; }).length;
+        const photoUrls = [];
+        let uploaded = 0;
+        for (const p of pendingPhotos) {
+          if (!p) continue;
+          if (typeof p === 'string') { photoUrls.push(p); continue; }
+          uploaded++;
+          btn.textContent = 'Uploading photo ' + uploaded + '/' + pendingUploadCount + '…';
+          const blob = await resizeImageFile(p, 1280);
+          const url = await uploadListingPhoto(blob);
+          photoUrls.push(url);
+        }
+        btn.textContent = 'Saving…';
+
         if (venmo && currentUsername) {
           await db.collection('usernames').doc(currentUsername).set({ venmoHandle: venmo }, { merge: true });
         }
@@ -3215,13 +3324,16 @@
           const updateData = {
             title: title, neighborhood: hood, spotType: laSelectedSpotType,
             price: price, priceUnit: priceUnit, days: days, startTime: start, endTime: end,
-            description: desc || null, venmoHandle: venmo || null
+            description: desc || null, venmoHandle: venmo || null, photoUrls: photoUrls
           };
           if (pendingListingPin) {
             updateData.lat = pendingListingPin.lat;
             updateData.lng = pendingListingPin.lng;
           }
           await db.collection('listings').doc(editingListingId).update(updateData);
+          removedPhotoUrls.forEach(function (url) {
+            storage.refFromURL(url).delete().catch(function () {});
+          });
           editingListingId = null;
           clearPendingPins();
           closeAllSheets();
@@ -3232,7 +3344,7 @@
             title: title, neighborhood: hood, spotType: laSelectedSpotType,
             lat: pendingListingPin.lat, lng: pendingListingPin.lng,
             price: price, priceUnit: priceUnit, days: days, startTime: start, endTime: end,
-            description: desc || null, venmoHandle: venmo || null,
+            description: desc || null, venmoHandle: venmo || null, photoUrls: photoUrls,
             status: 'active',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
@@ -3242,7 +3354,7 @@
         }
       } catch (e) {
         console.error(e);
-        showToast('Failed to save — try again');
+        showToast(e && e.message === 'upload-timeout' ? 'Photo upload timed out — try again or remove it' : 'Failed to save — try again');
         btn.disabled = false;
         btn.textContent = editingListingId ? 'Save Changes' : 'Save Listing';
       }
@@ -4405,80 +4517,20 @@
       });
     })();
 
-    // ── FILTER ──────────────────────────────────────────────────────
+    // ── FILTER (eye toggles) ──────────────────────────────────────────
     function applyTypeFilter() {
-      const types = Array.from(activeTypes);
-      const allOn = types.length === Object.keys(TYPE_LABELS).length;
-      const filterExpr = allOn
-        ? null
-        : ['in', ['get', 'type'], ['literal', types.length ? types : ['__none__']]];
+      const filterExpr = rulesVisible ? null : ['==', ['get', 'type'], '__none__'];
       ['r-fill', 'r-border', 'r-line'].forEach(function(lid) {
         map.setFilter(lid, filterExpr);
       });
-      const dot = document.getElementById('filter-active-dot');
-      if (dot) dot.style.display = allOn ? 'none' : 'block';
     }
 
-    document.querySelectorAll('.legend-row[data-type]').forEach(function(row) {
-      row.addEventListener('click', function() {
-        const t = this.dataset.type;
-        if (activeTypes.has(t)) {
-          activeTypes.delete(t);
-          this.classList.add('off');
-        } else {
-          activeTypes.add(t);
-          this.classList.remove('off');
-        }
-        applyTypeFilter();
-      });
-    });
-
     function applyListingTypeFilter() {
-      const types = Array.from(activeListingTypes);
-      const allOn = types.length === Object.keys(LISTING_LABELS).length;
-      const filterExpr = allOn
-        ? null
-        : ['in', ['get', 'spotType'], ['literal', types.length ? types : ['__none__']]];
+      const filterExpr = listingsVisible ? null : ['==', ['get', 'spotType'], '__none__'];
       ['listing-fill', 'listing-border'].forEach(function(lid) {
         if (map.getLayer(lid)) map.setFilter(lid, filterExpr);
       });
     }
-
-    document.querySelectorAll('.legend-row[data-listing-type]').forEach(function(row) {
-      row.addEventListener('click', function() {
-        const t = this.dataset.listingType;
-        if (activeListingTypes.has(t)) {
-          activeListingTypes.delete(t);
-          this.classList.add('off');
-        } else {
-          activeListingTypes.add(t);
-          this.classList.remove('off');
-        }
-        applyListingTypeFilter();
-      });
-    });
-
-    document.getElementById('legend-all-btn').addEventListener('click', function() {
-      activeTypes = new Set(Object.keys(TYPE_LABELS));
-      activeListingTypes = new Set(Object.keys(LISTING_LABELS));
-      document.querySelectorAll('.legend-row[data-type], .legend-row[data-listing-type]').forEach(function(r) { r.classList.remove('off'); });
-      applyTypeFilter();
-      applyListingTypeFilter();
-    });
-    document.getElementById('legend-none-btn').addEventListener('click', function() {
-      activeTypes = new Set();
-      activeListingTypes = new Set();
-      document.querySelectorAll('.legend-row[data-type], .legend-row[data-listing-type]').forEach(function(r) { r.classList.add('off'); });
-      applyTypeFilter();
-      applyListingTypeFilter();
-    });
-    document.addEventListener('pointerdown', function (e) {
-      const panel = document.getElementById('legend-panel');
-      const btn   = document.getElementById('filter-ctrl-btn');
-      if (panel.classList.contains('open') && !panel.contains(e.target) && (!btn || !btn.contains(e.target))) {
-        panel.classList.remove('open');
-      }
-    });
 
     // ── TYPE PICKER ──────────────────────────────────────────────────
     function setTypePicker(val) {
