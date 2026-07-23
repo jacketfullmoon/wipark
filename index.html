@@ -2090,11 +2090,16 @@
         }
       });
 
-      // × just closes back to the map — same underlying guest sign-in as
-      // "Continue as guest" so browsing/commenting/etc. keep working, since
-      // the rest of the app assumes at least an anonymous session exists.
+      // × closes immediately and unconditionally — it must not depend on
+      // signInAnonymously() succeeding (that only closes the modal indirectly,
+      // via onAuthStateChanged, so a slow/blocked/failed sign-in would leave
+      // the modal stuck open). Sign-in is attempted separately, best-effort,
+      // so the rest of the app still has at least an anonymous session.
       document.getElementById('username-close').addEventListener('click', function() {
-        guestBtn.click();
+        modal.classList.remove('open');
+        if (!auth.currentUser) {
+          auth.signInAnonymously().catch(function() {});
+        }
       });
 
       auth.onAuthStateChanged(async function(user) {
