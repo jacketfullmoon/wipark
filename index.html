@@ -279,6 +279,27 @@
       transition: opacity 0.15s;
     }
     #profile-btn:active { opacity: 0.75; }
+    #join-cta-btn {
+      position: fixed;
+      bottom: calc(var(--safe-bottom) + 4px + 32px);
+      right: calc(var(--safe-right) + 10px);
+      z-index: 300;
+      display: none;
+      align-items: center;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 20px;
+      padding: 8px 14px;
+      font-family: var(--font);
+      font-size: 13px; font-weight: 700;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.22);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    #join-cta-btn.show { display: flex; }
+    #join-cta-btn:active { opacity: 0.8; }
     #notif-badge {
       position: absolute; top: -3px; right: -3px;
       background: #e53935; color: #fff;
@@ -1650,6 +1671,9 @@
   <!-- ── PROFILE BUTTON ────────────────────────────────── -->
   <button id="profile-btn" aria-label="My profile">👤<span id="notif-badge"></span></button>
 
+  <!-- ── JOIN CTA (guests only) ──────────────────────────── -->
+  <button id="join-cta-btn">👋 Join wipark</button>
+
   <!-- ── DETAIL FILTER PANEL ──────────────────────────── -->
   <div id="filter-panel">
     <div class="filter-panel-title">Parking Laws <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:9px;color:var(--text3)">(tap to toggle)</span></div>
@@ -1937,7 +1961,13 @@
       } else {
         btn.innerHTML = '👤';
       }
+      const joinBtn = document.getElementById('join-cta-btn');
+      if (joinBtn) joinBtn.classList.toggle('show', !currentUsername);
     }
+
+    document.getElementById('join-cta-btn').addEventListener('click', function () {
+      document.getElementById('username-modal').classList.add('open');
+    });
     function openEmojiPicker() {
       if (!currentUsername || viewingUser) return;
       const modal = document.getElementById('emoji-picker-modal');
@@ -2146,6 +2176,8 @@
       pitchWithRotate: false,
       maxPitch: 0
     });
+    window.__map = map;
+    map.on('error', function (e) { console.error('[TRACE] map error event:', e && e.error); });
 
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
@@ -2206,12 +2238,17 @@
       onRemove: function() {}
     }, 'top-right');
 
+    console.log('[TRACE] before map.on load registration');
     map.on('load', function () {
+      console.log('[TRACE] map load fired');
       geolocate.trigger();
       setupMapLayers();
+      console.log('[TRACE] setupMapLayers done');
       loadRestrictions();
       loadListings();
+      console.log('[TRACE] loadRestrictions/loadListings called');
     });
+    console.log('[TRACE] after map.on load registration');
 
     // ── MAP LAYERS ──────────────────────────────────────────────────
     function setupMapLayers() {
@@ -2394,11 +2431,16 @@
       return { type: 'FeatureCollection', features: features };
     }
 
+    function updateTopbarCounts() {
+      const ruleText    = restrictions.length + ' rule' + (restrictions.length !== 1 ? 's' : '') + ' mapped';
+      const listingText = listings.length + ' space' + (listings.length !== 1 ? 's' : '') + ' for rent';
+      document.getElementById('rule-count').textContent = ruleText + ' · ' + listingText;
+    }
+
     function refreshMapSource() {
       if (!map.getSource('restrictions')) return;
       map.getSource('restrictions').setData(buildGeoJSON());
-      document.getElementById('rule-count').textContent =
-        restrictions.length + ' rule' + (restrictions.length !== 1 ? 's' : '') + ' mapped';
+      updateTopbarCounts();
     }
 
     function buildListingsGeoJSON() {
@@ -2420,6 +2462,7 @@
     function refreshListingsSource() {
       if (!map.getSource('listings')) return;
       map.getSource('listings').setData(buildListingsGeoJSON());
+      updateTopbarCounts();
     }
 
     // ── FIRESTORE ───────────────────────────────────────────────────
